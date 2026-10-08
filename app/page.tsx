@@ -1,69 +1,75 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Stethoscope } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { analyzePRD, countWords, MIN_WORDS } from "@/lib/analyzer";
+import { track } from "@/lib/analytics";
+import { saveResult } from "@/lib/storage";
+
+const SAMPLE = `# Saved Filters for Reports
+Problem: Support managers struggle to re-create the same report filters every morning because filters reset on each visit. In 6 of 9 interviews last month, managers said they spend about 10 minutes a day rebuilding them.
+Users: Support managers at mid-size teams (20-100 agents).
+Goals: Let users save and reuse filters. Out of scope: sharing filters between users.
+Success metrics: Reduce time to first report from 10 minutes to 2 minutes within 60 days of launch.
+Acceptance criteria: Given a saved filter, when the manager opens Reports, then the filter is applied automatically.
+Dependencies: Requires the Reports API from the platform team.`;
 
 export default function Home() {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const words = countWords(text);
+
+  function analyze() {
+    if (words < MIN_WORDS) {
+      setError(`Paste a bit more: PRD Doctor needs at least ${MIN_WORDS} words to give useful feedback (you have ${words}).`);
+      return;
+    }
+    setError("");
+    const t0 = performance.now();
+    track("analysis_started", { words, chars: text.length });
+    const result = analyzePRD(text);
+    saveResult(result);
+    track("analysis_completed", {
+      score: result.overall,
+      words,
+      duration_ms: Math.round(performance.now() - t0),
+      weak_categories: result.categories.filter((c) => c.status === "weak").length,
+    });
+    router.push(`/result/${result.id}`);
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="mx-auto w-full max-w-3xl px-5 py-12 sm:py-20">
+      <div className="mb-8 text-center">
+        <div className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground">
+          <Stethoscope className="size-6" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">PRD Doctor</h1>
+        <p className="mx-auto mt-3 max-w-xl text-balance text-muted-foreground">
+          Paste your product requirements doc. Get a 0-100 score across 12 categories, with fixes that quote your own words.
+        </p>
+      </div>
+
+      <Textarea
+        value={text}
+        onChange={(e) => { setText(e.target.value); setError(""); }}
+        placeholder="Paste your PRD here…"
+        className="min-h-[360px] resize-y rounded-xl p-4 text-sm leading-relaxed shadow-sm"
+        aria-label="PRD text"
+      />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          {words} words · Analysis runs in your browser. Your PRD is never uploaded.
         </div>
-      </main>
-    </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setText(SAMPLE)}>Try a sample</Button>
+          <Button size="lg" onClick={analyze}>Analyze PRD</Button>
+        </div>
+      </div>
+      {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+    </main>
   );
 }

@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PRD Doctor
 
-## Getting Started
+Paste a product requirements document, click **Analyze PRD**, get a 0-100 score across 12 categories. Every weak category comes with what's missing, why it matters, exactly what to add, and one question, each anchored to a sentence **quoted from your own PRD**.
 
-First, run the development server:
+Next.js 16 · TypeScript · Tailwind 4 · shadcn/ui · PostHog. No auth, no database, no API keys required.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Problem
+
+PRDs are the most-reviewed and least-measured artifact in product work. Feedback is slow, inconsistent and social: reviewers catch what they happen to care about, and gaps (no non-goals, no baseline for the metric, no rollback plan) surface at kickoff or after launch. PMs have no fast, private, objective way to ask "is this ready for review?"
+
+## Target user
+
+Primary: product managers (IC to group PM) at startups and scale-ups, who write PRDs weekly and review them with engineering and design. Secondary: founders and designers writing specs without a PM, and PM leads who want a consistent bar across a team.
+
+## Product hypothesis
+
+> If a PM gets a specific, quote-anchored critique in under 10 seconds, before sending the PRD for review, they will fix more gaps pre-review and share the score as a quality signal.
+
+Success looks like: high `analysis_completed / analysis_started`, repeat analyses of the same PRD with rising scores, and a healthy `share_clicked` rate per `score_viewed`.
+
+## Scoring model
+
+Twelve categories, each scored 0-100, combined into the overall score by weight:
+
+| Category | Weight | | Category | Weight |
+|---|---|---|---|---|
+| Problem clarity | 12 | | Risks | 7 |
+| Success metrics | 11 | | Edge cases | 6 |
+| Target user clarity | 10 | | Prioritization | 6 |
+| Evidence | 10 | | Experiment design | 6 |
+| Acceptance criteria | 10 | | Dependencies | 5 |
+| Scope | 9 | | User pain severity | 8 |
+
+Weights sum to 100, so `overall = Σ(score × weight / 100)`.
+
+Each category is a **rubric of 3-5 signals** (see `RUBRICS` in `lib/analyzer.ts`), each with a weight and a pattern, e.g. for *Success metrics*: a named KPI (30), a numeric target/baseline (30), a concrete metric such as conversion or retention (25), a time frame (15). A category's score is the sum of detected signal weights. Two penalties: −15 for vague wording in Metrics/Acceptance criteria (“fast”, “seamless”, “better”) and −15 for generic users (“everyone”) in Target user.
+
+Status: **strong** ≥ 70, **ok** 40-69, **weak** < 40. The **top 3 weaknesses** are ranked by weighted points lost, `(100 − score) × weight`, so a missing success metric outranks a missing dependency list. The **strongest section** is the highest raw score.
+
+### No hallucination
+
+The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubric text, and (c) `[bracketed placeholders]`. The suggested rewrite is a scaffold: it keeps your quoted lines and leaves blanks. It never invents users, numbers or evidence. Quote kinds: *You wrote* (a sentence that satisfied part of the rubric), *Vague wording* (a sentence flagged as unmeasurable), and *Closest text* (an anchor sentence when nothing relevant exists).
+
+## Architecture
+
+```
+app/page.tsx                 editor → analyzePRD() in the browser → localStorage → /result/[id]
+app/result/[id]/page.tsx     server shell, generateMetadata() sets og:image from ?s=
+components/result-view.tsx   score ring, radar, bars, top-3, fixes, rewrite, share controls
+app/api/og/route.tsx         1200×630 share card PNG (next/og), also the "Download card" file
+lib/analyzer.ts              rubrics, scoring, rewrite, share-payload encode/decode
+lib/analytics.ts             PostHog wrapper (no-op without a key)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Analysis runs client-side.** The PRD never leaves the browser, which matters because PRDs are confidential. The full result is stored in `localStorage` under the result id.
+- **Sharing is stateless.** The share URL is `/result/<id>?s=<base64url>` where `s` holds **only the scores** (overall + 12 numbers), never the text. Anyone opening it sees the score, radar and bars; the full report appears only in the browser that created it. The same `s` drives the social preview image and the downloadable card, which shows the score, three metrics (strongest category, biggest gap, healthy categories out of 12) and the result URL.
+- **Analytics events:** `analysis_started`, `analysis_completed`, `share_clicked` (method: native/copy/download), `score_viewed` (source: own/shared). Properties are counts and scores only, never PRD text. Anonymous: `person_profiles: "identified_only"`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run it
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+cp .env.example .env.local   # optional: add NEXT_PUBLIC_POSTHOG_KEY
+npm run dev                  # http://localhost:3000
+npm run build && npm start
+```
 
-## Learn More
+Deploys to Vercel with zero config (set the two optional PostHog env vars). It also runs anywhere Node does.
 
-To learn more about Next.js, take a look at the following resources:
+## Tradeoffs
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Heuristics over an LLM.** Deterministic, free, instant, private, explainable and testable, and it can't fabricate facts. The cost: it detects *presence* of structure, not *quality*. A PRD can say “risks: none” and still get credit for mentioning risks. Patterns are English-only and can be gamed by keyword stuffing.
+- **Stateless sharing over a database.** No infra, no PII, nothing to leak. The cost: the public link can't show the full report, and anyone can hand-craft a `?s=` payload to display a fake score (the card is a self-reported signal, not a certificate).
+- **Results in `localStorage`.** Clearing the browser loses the report. Fine for an anonymous MVP.
+- **Hand-rolled radar and bars** instead of a chart library: ~40 lines, no dependency.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Roadmap
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Test corpus + calibration.** Collect ~50 real PRDs, hand-label them, and tune weights and patterns against reviewer judgement.
+2. **LLM judge as an optional second pass.** Keep the rubric and quoting contract; have a model grade *quality* per signal and require its evidence to be a verbatim substring of the PRD (reject otherwise).
+3. **Persistent results** (database + short URLs) with an opt-in public report page.
+4. **Accounts and history:** score over time, team benchmarks, shared standards per org.
+5. **Integrations:** import from Notion, Google Docs, Confluence, Linear; a Slack/GitHub check that comments a score on PRD changes.
+6. **Customisable rubrics** per company (e.g. regulated industries need a compliance category).
+7. **Localisation** beyond English.
