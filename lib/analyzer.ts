@@ -484,9 +484,17 @@ export function shareMetrics(p: SharePayload) {
   ];
 }
 
-export function grade(score: number): { label: string; color: string } {
-  if (score >= 80) return { label: "Ready for review", color: "#16a34a" };
-  if (score >= 60) return { label: "Almost there", color: "#65a30d" };
-  if (score >= 40) return { label: "Needs work", color: "#d97706" };
-  return { label: "Early draft", color: "#dc2626" };
+export function grade(score: number): { label: string; color: string; bg: string } {
+  if (score >= 80) return { label: "Ready for review", color: "#346538", bg: "#EDF3EC" };
+  if (score >= 60) return { label: "Almost there", color: "#346538", bg: "#EDF3EC" };
+  if (score >= 40) return { label: "Needs work", color: "#956400", bg: "#FBF3DB" };
+  return { label: "Early draft", color: "#9F2F2D", bg: "#FDEBEC" };
+}
+
+export function statusTone(s: Status): { bg: string; color: string; label: string } {
+  return s === "strong"
+    ? { bg: "#EDF3EC", color: "#346538", label: "Strong" }
+    : s === "ok"
+      ? { bg: "#FBF3DB", color: "#956400", label: "Partial" }
+      : { bg: "#FDEBEC", color: "#9F2F2D", label: "Weak" };
 }

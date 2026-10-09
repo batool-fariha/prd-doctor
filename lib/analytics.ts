@@ -11,6 +11,10 @@ export function initAnalytics() {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
     person_profiles: "identified_only", // anonymous usage; no user profiles
     capture_pageview: true,
+    disable_session_recording: true, // the PRD textarea must never be recorded
+    autocapture: false, // only our four explicit events
+    capture_dead_clicks: false,
+    disable_surveys: true,
   });
   ready = true;
 }

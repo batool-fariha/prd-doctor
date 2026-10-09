@@ -83,3 +83,7 @@ Deploys to Vercel with zero config (set the two optional PostHog env vars). It a
 5. **Integrations:** import from Notion, Google Docs, Confluence, Linear; a Slack/GitHub check that comments a score on PRD changes.
 6. **Customisable rubrics** per company (e.g. regulated industries need a compliance category).
 7. **Localisation** beyond English.
+
+## Analytics privacy
+
+PostHog is initialised with session replay, autocapture, surveys and dead-click capture all **disabled** (`lib/analytics.ts`), so the PRD text typed into the editor is never recorded. Only the four named events are sent, with counts and scores as properties. Set `NEXT_PUBLIC_POSTHOG_KEY` (see `.env.example`); without it analytics are a no-op.
