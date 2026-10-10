@@ -39,9 +39,25 @@ Each category is a **rubric of 3-5 signals** (see `RUBRICS` in `lib/analyzer.ts`
 
 Status: **strong** ≥ 70, **ok** 40-69, **weak** < 40. The **top 3 weaknesses** are ranked by weighted points lost, `(100 − score) × weight`, so a missing success metric outranks a missing dependency list. The **strongest section** is the highest raw score.
 
+### How the checks avoid cheap wins
+
+- **Section-aware.** The PRD is split into sections (`# Heading`, `**Bold**`, or `Label:` lines). A matching section that has real content earns the category's headline signal.
+- **Placeholders don't count.** `Risks: none`, `TBD`, `N/A`, or an empty heading are detected, capped at 15, and shown as a "Placeholder section" quote.
+- **One sentence can't pay everywhere.** A sentence earns credit in at most three categories: the section it sits in first, then its best matches. Heading-only lines never score.
+- **Specifics are rewarded.** Numbers (limits, counts) and named owners add a small bonus where they matter.
+- **Vague words are penalised** in metrics and acceptance criteria; "everyone" is penalised under target user.
+
 ### No hallucination
 
-The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubric text, and (c) `[bracketed placeholders]`. The suggested rewrite is a scaffold: it keeps your quoted lines and leaves blanks. It never invents users, numbers or evidence. Quote kinds: *You wrote* (a sentence that satisfied part of the rubric), *Vague wording* (a sentence flagged as unmeasurable), and *Closest text* (an anchor sentence when nothing relevant exists).
+The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubric text, and (c) `[bracketed placeholders]`. The suggested rewrite is a scaffold: it keeps your quoted lines and leaves blanks. It never invents users, numbers or evidence. Quote kinds: *You wrote* (a sentence that satisfied part of the rubric), *Vague wording* (flagged as unmeasurable), *Placeholder section* (e.g. `Risks: none`), and *Nearest text* (the sentence closest to where the section would go). Quotes are chosen to be distinct across categories, and when nothing is relevant the report says "No mention found in your PRD" instead of quoting something unrelated.
+
+## Features
+
+- **Edit and re-score:** returns to the editor with your text; the result shows `+N since last time` for the same PRD title. Recent analyses are listed on the home page.
+- **Input:** paste (Google Docs / Notion formatting is converted to headings and lists), or upload / drag in a `.md` or `.txt` file. Validation catches too-short, too-long (60k chars), code-like and repeated input with a clear message.
+- **Export:** copy the report as Markdown, download `.md`, or print / save as PDF.
+- **Fix tracking:** copy any fix, and mark fixes as addressed with a progress meter.
+- **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only.
 
 ## Architecture
 
@@ -50,11 +66,15 @@ app/page.tsx                 editor → analyzePRD() in the browser → localSto
 app/result/[id]/page.tsx     server shell, generateMetadata() sets og:image from ?s=
 components/result-view.tsx   score ring, radar, bars, top-3, fixes, rewrite, share controls
 app/api/og/route.tsx         1200×630 share card PNG (next/og), also the "Download card" file
-lib/analyzer.ts              rubrics, scoring, rewrite, share-payload encode/decode
+lib/analyzer.ts              rubrics, section parsing, scoring, quotes, rewrite, share payload
+lib/storage.ts               localStorage: results, history, draft, "addressed" fixes
+lib/paste.ts                 rich-text (HTML) paste to markdown-ish text
+lib/validate.ts              input checks (length, junk, repetition)
+lib/report.ts                Markdown report and per-fix export
 lib/analytics.ts             PostHog wrapper (no-op without a key)
 ```
 
-- **Analysis runs client-side.** The PRD never leaves the browser, which matters because PRDs are confidential. The full result is stored in `localStorage` under the result id.
+- **Analysis runs client-side.** The PRD never leaves the browser, which matters because PRDs are confidential. The full result, **including the PRD text** (so you can edit and re-score), is stored in `localStorage` on your device only, and can be wiped with "Clear history".
 - **Sharing is stateless.** The share URL is `/result/<id>?s=<base64url>` where `s` holds **only the scores** (overall + 12 numbers), never the text. Anyone opening it sees the score, radar and bars; the full report appears only in the browser that created it. The same `s` drives the social preview image and the downloadable card, which shows the score, three metrics (strongest category, biggest gap, healthy categories out of 12) and the result URL.
 - **Analytics events:** `analysis_started`, `analysis_completed`, `share_clicked` (method: native/copy/download), `score_viewed` (source: own/shared). Properties are counts and scores only, never PRD text. Anonymous: `person_profiles: "identified_only"`.
 
@@ -78,6 +98,7 @@ Deploys to Vercel with zero config (set the two optional PostHog env vars). It a
 
 ## Roadmap
 
+0. **Done:** section-aware scoring, placeholders, distinct quotes, history and re-score, upload and paste cleanup, export.
 1. **Test corpus + calibration.** Collect ~50 real PRDs, hand-label them, and tune weights and patterns against reviewer judgement.
 2. **LLM judge as an optional second pass.** Keep the rubric and quoting contract; have a model grade *quality* per signal and require its evidence to be a verbatim substring of the PRD (reject otherwise).
 3. **Persistent results** (database + short URLs) with an opt-in public report page.

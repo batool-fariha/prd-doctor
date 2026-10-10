@@ -1,19 +1,28 @@
 "use client";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Download, Minus, Plus, Share } from "@/components/icons";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Check, Copy, Download, File, Minus, Pencil, Plus, Printer, Share } from "@/components/icons";
 import { CATEGORY_ORDER, decodePayload, encodePayload, grade, shareMetrics, statusTone, toSharePayload, type AnalysisResult, type CategoryResult, type SharePayload } from "@/lib/analyzer";
-import { readRaw } from "@/lib/storage";
+import { clearDraft, parseDone, parseHistory, readDone, readHistoryRaw, readRaw, setDraft, subscribe, toggleDone } from "@/lib/storage";
+import { downloadText, fixMarkdown, reportMarkdown } from "@/lib/report";
 import { track } from "@/lib/analytics";
+import { LogoMark } from "./logo";
 import { RadarChart } from "./radar-chart";
 import { Reveal } from "./reveal";
 import { CountUp } from "./count-up";
 
 const delay = (i: number) => ({ "--i": i }) as React.CSSProperties;
+const QUOTE_LABEL = { found: "You wrote", anchor: "Nearest text in your PRD", vague: "Vague wording", empty: "Placeholder section" } as const;
+
+function useFlash() {
+  const [on, setOn] = useState(false);
+  return [on, () => { setOn(true); setTimeout(() => setOn(false), 1800); }] as const;
+}
 
 export function ResultView({ id, shared }: { id: string; shared: string | null }) {
   // undefined on the server / first render, string|null once on the client
-  const raw = useSyncExternalStore(() => () => {}, () => readRaw(id), () => undefined);
+  const raw = useSyncExternalStore(subscribe, () => readRaw(id), () => undefined);
   const loaded = raw !== undefined;
   const result = useMemo<AnalysisResult | null>(() => {
     try { return raw ? (JSON.parse(raw) as AnalysisResult) : null; } catch { return null; }
@@ -25,15 +34,16 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
   }, [loaded, payload, result]);
 
   if (!loaded) return null;
-  if (!payload) return <Missing />;
+  if (!payload) return <Missing damaged={Boolean(shared)} />;
   const g = grade(payload.o);
   const stats = shareMetrics(payload);
+  const delta = result?.prev ? payload.o - result.prev.overall : null;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 pb-24">
-      <header className="sticky top-0 z-20 -mx-6 flex items-baseline justify-between border-b bg-background/70 px-6 py-5 backdrop-blur-md">
-        <Link href="/" className="serif flex items-center gap-2 text-xl"><span className="size-2.5 rounded-full bg-gradient-to-br from-[#A78BFA] to-[#6D4AFF]" />PRD Doctor</Link>
-        <Link href="/" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Analyze another</Link>
+      <header className="no-print sticky top-0 z-20 -mx-6 flex items-center justify-between border-b bg-background/70 px-6 py-4 backdrop-blur-md">
+        <Link href="/" className="serif flex items-center gap-2.5 text-xl"><LogoMark />PRD Doctor</Link>
+        <Link href="/" onClick={clearDraft} className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Analyze another</Link>
       </header>
 
       <section className="rise my-8 md:my-10" style={delay(0)}>
@@ -42,13 +52,14 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
             <div className="flex flex-wrap items-center gap-3">
               <p className="eyebrow">{result ? "Your PRD" : "Shared result"}</p>
               <span className="rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.05em]" style={{ background: g.bg, color: g.color }}>{g.label}</span>
+              {delta !== null && <DeltaChip delta={delta} />}
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <CountUp value={payload.o} className="serif score-grad text-[6.5rem] leading-none tabular-nums sm:text-[8.5rem]" />
               <span className="serif text-2xl text-muted-foreground">/100</span>
             </div>
             <p className="mt-2 max-w-md text-[15px] text-[#3B3650]">
-              {result ? `${result.words} words read across twelve categories.` : "A summary of scores. The PRD text itself is never shared."}
+              {result ? `${result.title} · ${result.words.toLocaleString()} words read across twelve categories.` : "A summary of scores. The PRD text itself is never shared."}
             </p>
             <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
               {stats.map((m) => (
@@ -69,20 +80,47 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
   );
 }
 
-function Missing() {
+function DeltaChip({ delta }: { delta: number }) {
+  const up = delta > 0, flat = delta === 0;
   return (
-    <main className="mx-auto max-w-md px-6 py-32">
-      <h1 className="serif text-4xl">Result not found</h1>
-      <p className="mt-3 text-sm text-muted-foreground">Reports are stored privately in the browser that created them. Run a new analysis to get one.</p>
-      <Link href="/" className="btn-solid mt-8 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">Analyze a PRD <ArrowRight /></Link>
+    <span className="rounded-full px-2.5 py-1 text-[11px] font-medium tracking-[0.02em]" style={{ background: flat ? "#F4F1FB" : up ? "#EDF3EC" : "#FDEBEC", color: flat ? "#565170" : up ? "#346538" : "#9F2F2D" }}>
+      {flat ? "No change since last time" : `${up ? "+" : ""}${delta} since last time`}
+    </span>
+  );
+}
+
+function Missing({ damaged }: { damaged: boolean }) {
+  const histRaw = useSyncExternalStore(subscribe, readHistoryRaw, () => "");
+  const history = parseHistory(histRaw).slice(0, 4);
+  return (
+    <main className="mx-auto w-full max-w-5xl px-6">
+      <header className="flex items-center border-b py-5"><Link href="/" className="serif flex items-center gap-2.5 text-xl"><LogoMark />PRD Doctor</Link></header>
+      <section className="rise max-w-xl py-24" style={delay(0)}>
+        <p className="eyebrow mb-4">{damaged ? "Broken link" : "Report not found"}</p>
+        <h1 className="serif text-5xl leading-[1.06]">{damaged ? "That share link looks damaged." : "We can't find that report."}</h1>
+        <p className="mt-5 text-[15px] text-[#3B3650]">
+          {damaged
+            ? "Part of the link was cut off or changed, so the scores couldn't be read. Ask for the link again, or score your own PRD."
+            : "Full reports are kept privately in the browser that made them, so they don't follow a link to another device or after clearing site data. Score the PRD again to get a fresh one."}
+        </p>
+        <Link href="/" className="btn-solid mt-8 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">Analyze a PRD <ArrowRight /></Link>
+        {history.length > 0 && (
+          <div className="mt-14">
+            <h2 className="eyebrow mb-3">Your recent analyses</h2>
+            <ul>{history.map((h) => (
+              <li key={h.id} className="border-b"><Link href={`/result/${h.id}`} className="flex items-center justify-between py-3 hover:underline"><span className="serif truncate text-lg">{h.title}</span><span className="font-mono text-xs text-muted-foreground">{h.overall}/100</span></Link></li>
+            ))}</ul>
+          </div>
+        )}
+      </section>
     </main>
   );
 }
 
-function Section({ title, children, i = 0 }: { title: string; children: React.ReactNode; i?: number }) {
+function Section({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <Reveal delay={i > 3 ? 0 : 0} className="border-t pt-8 pb-14">
-      <h2 className="eyebrow mb-8">{title}</h2>
+    <Reveal className="border-t pt-8 pb-14">
+      <div className="mb-8 flex items-center justify-between gap-4"><h2 className="eyebrow">{title}</h2>{right}</div>
       {children}
     </Reveal>
   );
@@ -113,7 +151,7 @@ function SharedBars({ scores }: { scores: number[] }) {
 }
 
 function ShareControls({ payload, id }: { payload: SharePayload; id: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, flash] = useFlash();
   const url = () => `${window.location.origin}/result/${id}?s=${encodePayload(payload)}`;
   const text = `My PRD scored ${payload.o}/100 on PRD Doctor`;
 
@@ -123,7 +161,7 @@ function ShareControls({ payload, id }: { payload: SharePayload; id: string }) {
     if (typeof navigator.share === "function") {
       try { await navigator.share({ title: text, text, url: u }); return; } catch { /* cancelled */ }
     }
-    try { await navigator.clipboard.writeText(`${text}\n${u}`); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+    try { await navigator.clipboard.writeText(`${text}\n${u}`); flash(); } catch {}
   }
 
   async function download() {
@@ -137,7 +175,7 @@ function ShareControls({ payload, id }: { payload: SharePayload; id: string }) {
   }
 
   return (
-    <div className="mt-8 flex flex-wrap gap-3">
+    <div className="no-print mt-8 flex flex-wrap gap-3">
       <button onClick={share} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
         {copied ? <Check /> : <Share />}{copied ? "Link copied" : "Share my PRD score"}
       </button>
@@ -151,14 +189,35 @@ function Tag({ status }: { status: CategoryResult["status"] }) {
   return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em]" style={{ background: t.bg, color: t.color }}>{t.label}</span>;
 }
 
+function Toolbar({ result }: { result: AnalysisResult }) {
+  const router = useRouter();
+  const [copied, flash] = useFlash();
+  const btn = "btn-line inline-flex h-9 items-center gap-2 px-3.5 text-[13px]";
+  return (
+    <div className="no-print rise mb-10 flex flex-wrap gap-2" style={delay(2)}>
+      {result.text && (
+        <button className={btn} onClick={() => { setDraft(result.text!); router.push("/"); }}><Pencil />Edit and re-score</button>
+      )}
+      <button className={btn} onClick={async () => { await navigator.clipboard.writeText(reportMarkdown(result)); flash(); }}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy as Markdown"}</button>
+      <button className={btn} onClick={() => downloadText(`prd-report-${result.overall}.md`, reportMarkdown(result))}><File />Download .md</button>
+      <button className={btn} onClick={() => { document.querySelectorAll("details").forEach((d) => (d.open = true)); setTimeout(() => window.print(), 60); }}><Printer />Print or save PDF</button>
+    </div>
+  );
+}
+
 function FullReport({ result }: { result: AnalysisResult }) {
   const by = (id: string) => result.categories.find((c) => c.id === id)!;
   const strongest = by(result.strongest);
   const fixes = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score);
+  const doneRaw = useSyncExternalStore(subscribe, () => readDone(result.id), () => "");
+  const done = useMemo(() => new Set(parseDone(doneRaw)), [doneRaw]);
+  const doneCount = fixes.filter((f) => done.has(f.id)).length;
 
   return (
     <>
-      <Section title="Where to start" i={3}>
+      <Toolbar result={result} />
+
+      <Section title="Where to start">
         <div className="grid gap-4 md:grid-cols-3">
           {result.weakest.map((id, i) => {
             const c = by(id);
@@ -176,7 +235,7 @@ function FullReport({ result }: { result: AnalysisResult }) {
         </div>
       </Section>
 
-      <Section title="Strongest section" i={4}>
+      <Section title="Strongest section">
         <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
           <div>
             <h3 className="serif text-3xl leading-tight">{strongest.label}</h3>
@@ -189,12 +248,13 @@ function FullReport({ result }: { result: AnalysisResult }) {
         </div>
       </Section>
 
-      <Section title="All categories" i={5}><Bars scores={CATEGORY_ORDER.map((m) => by(m.id).score)} /></Section>
+      <Section title="All categories"><Bars scores={CATEGORY_ORDER.map((m) => by(m.id).score)} /></Section>
 
-      <Section title={`Fixes · ${fixes.length}`} i={6}>
-        {fixes.length === 0 ? <p className="text-sm text-muted-foreground">Every category scored 70 or higher.</p> : (
-          <div className="border-t">{fixes.map((c, i) => <Fix key={c.id} c={c} open={i < 2} />)}</div>
+      <Section title={`Fixes · ${fixes.length}`} right={fixes.length > 0 ? <AddressedMeter done={doneCount} total={fixes.length} /> : null}>
+        {fixes.length === 0 ? <p className="text-sm text-[#3B3650]">Every category scored 70 or higher. Nothing to fix.</p> : (
+          <div className="border-t">{fixes.map((c, i) => <Fix key={c.id} c={c} resultId={result.id} open={i < 2} addressed={done.has(c.id)} />)}</div>
         )}
+        {fixes.length > 0 && <p className="no-print mt-5 text-xs text-muted-foreground">Mark a fix as addressed once you have updated your PRD, then use “Edit and re-score” to see the real change.</p>}
       </Section>
 
       <Rewrite text={result.rewrite} />
@@ -202,13 +262,25 @@ function FullReport({ result }: { result: AnalysisResult }) {
   );
 }
 
-function Fix({ c, open }: { c: CategoryResult; open: boolean }) {
-  const label = { found: "You wrote", anchor: "Closest text in your PRD", vague: "Vague wording" }[c.quote?.kind ?? "anchor"];
+function AddressedMeter({ done, total }: { done: number; total: number }) {
   return (
-    <details open={open} className="group border-b">
+    <div className="no-print flex items-center gap-3" aria-label={`${done} of ${total} fixes addressed`}>
+      <span className="font-mono text-xs text-muted-foreground">{done} of {total} addressed</span>
+      <span className="h-[5px] w-28 overflow-hidden rounded-full bg-[#E7E1F7]">
+        <span className="block h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#6D4AFF] transition-[width] duration-700" style={{ width: `${(done / total) * 100}%` }} />
+      </span>
+    </div>
+  );
+}
+
+function Fix({ c, open, addressed, resultId }: { c: CategoryResult; open: boolean; addressed: boolean; resultId: string }) {
+  const [copied, flash] = useFlash();
+  return (
+    <details open={open} className={`group border-b transition-opacity ${addressed ? "opacity-60" : ""}`}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-4">
-          <span className="serif text-2xl">{c.label}</span><Tag status={c.status} />
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="serif flex items-center gap-2 text-2xl">{addressed && <Check className="text-[#346538]" />}{c.label}</span>
+          {addressed ? <span className="rounded-full bg-[#EDF3EC] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[#346538]">Addressed</span> : <Tag status={c.status} />}
         </span>
         <span className="flex items-center gap-4 text-muted-foreground">
           <span className="font-mono text-xs">{c.score}</span>
@@ -216,11 +288,23 @@ function Fix({ c, open }: { c: CategoryResult; open: boolean }) {
         </span>
       </summary>
       <div className="grid gap-x-10 gap-y-5 pb-8 text-[15px] leading-relaxed text-[#2A2640] md:grid-cols-[180px_1fr]">
-        {c.quote && <Row k={label}><blockquote className="serif text-lg italic leading-snug">“{c.quote.text}”</blockquote></Row>}
+        <Row k={c.quote ? QUOTE_LABEL[c.quote.kind] : "Nearest text"}>
+          {c.quote
+            ? <blockquote className="serif text-lg italic leading-snug">“{c.quote.text}”</blockquote>
+            : <span className="text-[#565170]">No mention found in your PRD.</span>}
+        </Row>
         <Row k="What is missing">{c.missing.length ? c.missing.join("; ") : "Nothing structural, but the signals found are thin."}</Row>
         <Row k="Why it matters">{c.why}</Row>
         <Row k="What to add">{c.add}</Row>
         <Row k="Question"><span className="serif text-lg">{c.question}</span></Row>
+        <div className="no-print flex flex-wrap gap-2 md:col-start-2">
+          <button className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={async () => { await navigator.clipboard.writeText(fixMarkdown(c)); flash(); }}>
+            {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy this fix"}
+          </button>
+          <button className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={() => toggleDone(resultId, c.id)}>
+            <Check />{addressed ? "Mark as open" : "Mark as addressed"}
+          </button>
+        </div>
       </div>
     </details>
   );
@@ -231,12 +315,12 @@ function Row({ k, children }: { k: string; children: React.ReactNode }) {
 }
 
 function Rewrite({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, flash] = useFlash();
   return (
-    <Section title="Suggested rewrite" i={7}>
+    <Section title="Suggested rewrite">
       <div className="rounded-xl border bg-[#F4F1FB]/80 p-6">
-        <div className="mb-4 flex justify-end">
-          <button onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="btn-line inline-flex h-8 items-center gap-2 bg-white px-3 text-xs">
+        <div className="no-print mb-4 flex justify-end">
+          <button onClick={async () => { await navigator.clipboard.writeText(text); flash(); }} className="btn-line inline-flex h-8 items-center gap-2 bg-white px-3 text-xs">
             {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy"}
           </button>
         </div>

@@ -179,3 +179,13 @@ textarea:focus-visible { box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.22) !import
   .reveal { opacity: 1; transform: none; transition: none; }
   .bar-fill { transition: none; width: var(--w); }
 }
+
+@media print {
+  .no-print, .blob, .grain, .progress { display: none !important; }
+  body { background: #fff !important; }
+  .reveal, .rise { opacity: 1 !important; transform: none !important; animation: none !important; }
+  .bar-fill { width: var(--w) !important; transition: none !important; }
+  .panel { background: #fff !important; backdrop-filter: none !important; }
+  details > summary { break-after: avoid; }
+  section, details { break-inside: avoid; }
+}

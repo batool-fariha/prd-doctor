@@ -27,7 +27,7 @@ export type Status = "strong" | "ok" | "weak";
 export interface Quote {
   text: string;
   /** found = sentence that satisfies part of the rubric; anchor = nearest context; vague = flagged fuzzy wording */
-  kind: "found" | "anchor" | "vague";
+  kind: "found" | "anchor" | "vague" | "empty";
 }
 
 export interface CategoryResult {
@@ -53,14 +53,22 @@ export interface AnalysisResult {
   weakest: CategoryId[]; // top 3 by weighted points lost
   strongest: CategoryId;
   rewrite: string;
+  title: string;
+  /** Normalised PRD text, kept only in the browser so the user can edit and re-score. */
+  text?: string;
+  prev?: { id: string; overall: number; createdAt: number };
 }
 
 interface Signal {
   label: string;
   weight: number;
   test: RegExp;
-  /** minimum number of distinct matching lines/sentences required */
+  /** minimum number of distinct matching lines required */
   min?: number;
+  /** counts as found when the matching PRD section exists and has real content */
+  section?: boolean;
+  /** tested against the whole text instead of single sentences (multi-line patterns) */
+  text?: boolean;
 }
 
 interface Rubric {
@@ -244,7 +252,7 @@ const RUBRICS: Rubric[] = [
     label: "Prioritization",
     weight: 6,
     signals: [
-      { label: "priority labels (P0/P1, must/should/could)", weight: 40, test: /\b(P[0-3]|MoSCoW|must[- ]have|should[- ]have|nice[- ]to[- ]have|could[- ]have|priority|prioriti[sz]\w+)\b/i },
+      { label: "priority labels (P0/P1, must/should/could)", weight: 40, test: /\bP[0-3]\b|\bMoSCoW\b|\b(must|should|could)-have\b|\b(must|should|could) have:|\bnice[- ]to[- ]have\b|\b[Pp]rioriti[sz]\w+|\b[Pp]riority\b/ },
       { label: "a prioritisation rationale (impact, effort, RICE…)", weight: 30, test: /\b(RICE|ICE|impact|effort|ROI|trade-?offs?|Kano|opportunity cost)\b/i },
       { label: "sequencing (v1/v2, now/next/later)", weight: 30, test: /\b(phase \d|v1|v2|MVP|roadmap|now\/next\/later|fast follow)\b/i },
     ],
@@ -275,14 +283,70 @@ const RUBRICS: Rubric[] = [
 
 const VAGUE =
   /\b(fast|quick(ly)?|easy|easily|intuitive|user[- ]friendly|seamless(ly)?|robust|better|improved?|modern|simple|scalable|great|delight\w*|etc\.?)\b/i;
-
 const GENERIC_USER = /\b(everyone|everybody|all users|any user|anyone|all customers)\b/i;
+const PLACEHOLDER =
+  /^(none|n\/?a|na|nil|nothing|tbd|tba|todo|wip|unknown|to be (decided|determined|defined|confirmed)|not applicable|\?+|-+|…|\.{2,})[.!]*$/i;
+
+// A signal flagged `section` also counts when the matching section is present and filled.
+RUBRICS.forEach((rb) => {
+  rb.signals[0].section = true;
+  rb.signals.forEach((sg) => {
+    if (/section/i.test(sg.label)) sg.section = true;
+    if (/Given \/ When/.test(sg.label)) sg.text = true;
+  });
+});
+
+const SECTION_RE: Record<CategoryId, RegExp> = {
+  problem: /^(problem|background|context|motivation|overview|why)\b/i,
+  user: /^(users?|personas?|audience|target|who)\b/i,
+  evidence: /^(evidence|research|data|insights?|discovery)\b/i,
+  pain: /^(pain|severity|impact|urgency)\b/i,
+  scope: /^(scope|in scope|out of scope|non-?goals?|goals?|objectives?)\b/i,
+  metrics: /^(success|metrics?|kpis?|okrs?|measure)/i,
+  criteria: /^(acceptance|criteria|definition of done)/i,
+  risks: /^(risks?|assumptions?|mitigations?)\b/i,
+  edge: /^(edge|error|failure|corner)/i,
+  deps: /^(dependenc|integrations?|prerequisites?|blockers?)/i,
+  priority: /^(priorit|roadmap|phases?|milestones?)/i,
+  experiment: /^(experiment|a\/b|test plan|pilot|rollout|launch plan)/i,
+};
+
+/** Where a section *would* apply, used to pick the nearest sentence when nothing matches. */
+const TOPIC_RE: Record<CategoryId, RegExp> = {
+  problem: /\b(problem|issue|struggl\w+|slow|manual|hard|can't|cannot|pain|today|currently)\b/i,
+  user: /\b(users?|customers?|managers?|teams?|people|admins?|buyers?)\b/i,
+  evidence: /\b(users?|customers?|said|feedback|requests?|asked|saw|data)\b/i,
+  pain: /\b(slow|manual|every|often|hours?|time|costly|hard)\b/i,
+  scope: /\b(add|build|include|feature|let|allow|enable|should|will)\b/i,
+  metrics: /\b(improve|increase|reduce|better|faster|grow|goal|success)\b/i,
+  criteria: /\b(must|should|will|can|let|allow|enable|when|then)\b/i,
+  risks: /\b(launch|release|ship|data|payment|permission|migrat\w+|new|integrat\w+)\b/i,
+  edge: /\b(input|upload|save|submit|form|filter|login|search|import|export|flow)\b/i,
+  deps: /\b(api|service|team|integrat\w+|vendor|backend|data)\b/i,
+  priority: /\b(feature|should|must|will|let|allow|enable|add|build)\b/i,
+  experiment: /\b(launch|release|rollout|users?|improve|increase|expect|believe)\b/i,
+};
+
+const BONUS_NUMBERS = new Set<CategoryId>(["scope", "priority", "risks", "deps", "edge", "criteria"]);
+const BONUS_OWNER = new Set<CategoryId>(["deps", "risks", "experiment", "criteria", "priority"]);
+
+/** Cleans pasted text: odd whitespace, zero-width characters, fancy bullets, blank-line runs. */
+export function normalizeText(t: string): string {
+  return t
+    .replace(/\r\n?/g, "\n")
+    .replace(/[   ]/g, " ")
+    .replace(/[​-‍﻿]/g, "")
+    .replace(/^[ \t]*[•◦▪▫‣●○■□–—]\s+/gm, "- ")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 function splitUnits(text: string): string[] {
   return text
     .split(/\n+|(?<=[.!?])\s+(?=[A-Z“"(\[])/)
     .map((s) => s.replace(/^\s*(#+|[-*•]|\d+[.)])\s*/, "").trim())
-    .filter((s) => s.length >= 12);
+    .filter((s) => s.length >= 8);
 }
 
 function clip(s: string, n = 160): string {
@@ -290,21 +354,11 @@ function clip(s: string, n = 160): string {
   return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
 }
 
-function matches(units: string[], re: RegExp): string[] {
-  const flags = re.flags.replace("g", "");
-  const r = new RegExp(re.source, flags);
-  return units.filter((u) => r.test(u));
-}
+const reOf = (re: RegExp) => new RegExp(re.source, re.flags.replace("g", ""));
 
-function signalHit(text: string, units: string[], s: Signal): { hit: boolean; units: string[] } {
-  const r = new RegExp(s.test.source, s.test.flags.replace("g", ""));
-  const hitUnits = matches(units, s.test);
-  if (s.min) {
-    // count per line for list-style signals
-    const lineHits = text.split("\n").filter((l) => r.test(l)).length;
-    return { hit: lineHits >= s.min, units: hitUnits };
-  }
-  return { hit: r.test(text) || hitUnits.length > 0, units: hitUnits };
+function matches(units: string[], re: RegExp): string[] {
+  const r = reOf(re);
+  return units.filter((u) => r.test(u));
 }
 
 function status(score: number): Status {
@@ -312,17 +366,11 @@ function status(score: number): Status {
 }
 
 function fillQuote(template: string, q: Quote | null): string {
-  const stand = q ? `“${q.text.replace(/[.…]+$/, "")}”` : "your problem statement";
+  const stand = q ? `“${q.text.replace(/[.…]+$/, "")}”` : "the claims in your PRD";
   return template.replace(/\{q\}/g, stand);
 }
 
-/** The sentence most worth anchoring to when a category has no direct evidence. */
-function anchorSentence(units: string[]): string | null {
-  const re = /\b(goals?|build|launch|let users?|allow|enable|introduce|feature|we want|propos\w+|implement)\b/i;
-  return units.find((u) => re.test(u)) ?? units[0] ?? null;
-}
-
-function titleOf(text: string): string {
+export function titleOf(text: string): string {
   const heading = text.match(/^\s*#\s+(.+)$/m)?.[1];
   const first = text.split("\n").find((l) => l.trim().length > 0) ?? "Untitled PRD";
   return clip((heading ?? first).replace(/^#+\s*/, ""), 80);
@@ -330,6 +378,58 @@ function titleOf(text: string): string {
 
 function shortId(): string {
   return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+}
+
+// ---------- structure ----------
+
+interface Section {
+  title: string;
+  body: string;
+  level: number; // 0 for "Label:" style
+}
+
+const isHeadingLine = (l: string) =>
+  /^#{1,6}\s+\S/.test(l) || /^\*\*[^*]{2,60}\*\*:?$/.test(l) || /^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l);
+
+function isPlaceholderLine(line: string): boolean {
+  const l = line.replace(/^\s*([-*•]|\d+[.)])\s*/, "").replace(/\*\*/g, "");
+  const m = l.match(/^[^:]{1,40}:\s*(.+)$/);
+  return PLACEHOLDER.test((m ? m[1] : l).trim());
+}
+
+function parseSections(lines: string[]): Section[] {
+  const out: Section[] = [];
+  let cur: Section | null = null;
+  const push = () => { if (cur) out.push(cur); };
+  for (const raw of lines) {
+    const line = raw.trim();
+    let m: RegExpMatchArray | null;
+    if ((m = line.match(/^(#{1,6})\s+(.+?)\s*#*$/))) {
+      push();
+      cur = { title: m[2].replace(/[*_]/g, "").replace(/:$/, "").trim(), body: "", level: m[1].length };
+    } else if ((m = line.match(/^\*\*(.{2,50}?)\*\*:?\s*(.*)$/))) {
+      push();
+      cur = { title: m[1].replace(/:$/, "").trim(), body: m[2] ?? "", level: 0 };
+    } else if ((m = line.match(/^([A-Z][A-Za-z0-9 /&'-]{1,40}):\s*(.*)$/))) {
+      push();
+      cur = { title: m[1].trim(), body: m[2], level: 0 };
+    } else if (cur && line) {
+      cur.body += (cur.body ? "\n" : "") + line;
+    }
+  }
+  push();
+  return out;
+}
+
+function sectionState(sections: Section[], i: number): "filled" | "placeholder" {
+  const s = sections[i];
+  const flat = s.body.replace(/^[\s>*\-•\d.)]+/gm, "").replace(/\s+/g, " ").trim();
+  if (!flat) {
+    const next = sections[i + 1];
+    return s.level > 0 && next && next.level > s.level ? "filled" : "placeholder";
+  }
+  if (PLACEHOLDER.test(flat)) return "placeholder";
+  return flat.split(" ").length >= 3 || /\d/.test(flat) ? "filled" : "placeholder";
 }
 
 // ---------- main ----------
@@ -340,71 +440,146 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export function analyzePRD(text: string): AnalysisResult {
-  const units = splitUnits(text);
-  const anchor = anchorSentence(units);
+export function analyzePRD(input: string): AnalysisResult {
+  const text = normalizeText(input);
+  const lines = text.split("\n");
+  const sections = parseSections(lines);
+  // Heading-only lines and placeholder lines ("Risks: none") never earn credit.
+  const clean = lines.filter((l) => l.trim() && !isHeadingLine(l.trim()) && !isPlaceholderLine(l.trim())).join("\n");
+  const units = splitUnits(clean);
 
-  const categories: CategoryResult[] = RUBRICS.map((rb) => {
+  // 1. Raw signal hits per category.
+  const raw = RUBRICS.map((rb) =>
+    rb.signals.map((sg) => {
+      const r = reOf(sg.test);
+      if (sg.min) return { sg, units: [] as string[], textHit: clean.split("\n").filter((l) => r.test(l)).length >= sg.min };
+      if (sg.text) return { sg, units: [] as string[], textHit: r.test(clean) };
+      return { sg, units: matches(units, sg.test), textHit: false };
+    }),
+  );
+
+  // 2. A sentence earns credit in at most 3 categories: the section it sits in, then its best matches.
+  const owner = new Map<string, number>();
+  let cur = -1;
+  for (const l0 of lines) {
+    const l = l0.trim();
+    const head = l.match(/^#{1,6}\s+(.+?)\s*#*$/)?.[1] ?? l.match(/^\*\*(.{2,50}?)\*\*/)?.[1] ?? l.match(/^([A-Z][A-Za-z0-9 \/&'-]{1,40}):/)?.[1];
+    if (head !== undefined && (isHeadingLine(l) || /^[A-Z][A-Za-z0-9 \/&'-]{1,40}:\s*\S/.test(l) || /^\*\*/.test(l))) {
+      const t = head.replace(/[*_:]/g, "").trim();
+      cur = RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
+    }
+    if (cur >= 0 && l && !isHeadingLine(l) && !isPlaceholderLine(l)) splitUnits(l).forEach((u) => owner.set(u, cur));
+  }
+  const credit = new Map<string, Map<number, number>>();
+  raw.forEach((sigs, ci) =>
+    sigs.forEach((r) =>
+      r.units.forEach((u) => {
+        const m = credit.get(u) ?? new Map<number, number>();
+        m.set(ci, Math.max(m.get(ci) ?? 0, r.sg.weight + (owner.get(u) === ci ? 1000 : 0)));
+        credit.set(u, m);
+      }),
+    ),
+  );
+  const allowed = new Set<string>();
+  credit.forEach((m, u) => {
+    [...m.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).forEach(([ci]) => allowed.add(`${ci}|${u}`));
+  });
+
+  // 3. Score each category.
+  const partial = RUBRICS.map((rb, ci) => {
+    const secIdx = sections.findIndex((x) => SECTION_RE[rb.id].test(x.title));
+    const secState = secIdx < 0 ? null : sectionState(sections, secIdx);
     let score = 0;
     const found: string[] = [];
     const missing: string[] = [];
-    let bestUnit: string | null = null;
-    let bestScore = 0;
+    const cands: { u: string; w: number }[] = [];
 
-    for (const s of rb.signals) {
-      const { hit, units: hu } = signalHit(text, units, s);
-      if (hit) {
-        score += s.weight;
-        found.push(s.label);
-        if (hu.length && s.weight > bestScore) {
-          bestScore = s.weight;
-          bestUnit = hu[0];
-        }
-      } else missing.push(s.label);
+    raw[ci].forEach(({ sg, units: us, textHit }) => {
+      const ok = us.filter((u) => allowed.has(`${ci}|${u}`));
+      if (textHit || ok.length > 0 || (sg.section && secState === "filled")) {
+        score += sg.weight;
+        found.push(sg.label);
+        ok.forEach((u) => cands.push({ u, w: sg.weight }));
+      } else missing.push(sg.label);
+    });
+    if (secState === "filled" && secIdx >= 0) {
+      const first = splitUnits(sections[secIdx].body)[0];
+      if (first && !cands.some((c) => c.u === first)) cands.push({ u: first, w: 1 });
     }
 
-    // Penalise fuzzy wording where precision is the whole point.
+    // Reward specifics: numbers and named owners.
+    if (BONUS_NUMBERS.has(rb.id) && cands.some((c) => /\d/.test(c.u))) { score += 10; found.push("specific numbers"); }
+    if (BONUS_OWNER.has(rb.id) && cands.some((c) => /\b(owner|DRI|owned by|assigned to|responsible)\b|@\w+/i.test(c.u))) {
+      score += 10;
+      found.push("a named owner");
+    }
+
+    // Penalise vague wording and placeholder sections.
     let vagueUnit: string | null = null;
-    if (rb.id === "metrics" || rb.id === "criteria") {
-      vagueUnit = matches(units, VAGUE)[0] ?? null;
-      if (vagueUnit) score -= 15;
-    } else if (rb.id === "user") {
-      vagueUnit = matches(units, GENERIC_USER)[0] ?? null;
-      if (vagueUnit) score -= 15;
+    if (rb.id === "metrics" || rb.id === "criteria") vagueUnit = matches(units, VAGUE)[0] ?? null;
+    else if (rb.id === "user") vagueUnit = matches(units, GENERIC_USER)[0] ?? null;
+    if (vagueUnit) score -= 15;
+
+    let emptyText: string | null = null;
+    if (secState === "placeholder" && secIdx >= 0) {
+      const flat = sections[secIdx].body.replace(/\s+/g, " ").trim();
+      emptyText = `${sections[secIdx].title}: ${flat || "(empty)"}`;
+      score = Math.min(score, 15);
+      missing.unshift("real content (your section is only a placeholder)");
     }
 
     score = Math.max(0, Math.min(100, score));
+    cands.sort((a, b) => b.w - a.w);
+    return { rb, score, found, missing, cands, vagueUnit, emptyText };
+  });
 
-    let quote: Quote | null = null;
-    if (vagueUnit && status(score) !== "strong") quote = { text: clip(vagueUnit), kind: "vague" };
-    else if (bestUnit) quote = { text: clip(bestUnit), kind: "found" };
-    else if (anchor) quote = { text: clip(anchor), kind: "anchor" };
+  // 4. Pick quotes, keeping them distinct across categories where possible (most constrained first).
+  const used = new Set<string>();
+  const quotes = new Map<CategoryId, Quote | null>();
+  [...partial].sort((a, b) => (a.cands.length || 99) - (b.cands.length || 99)).forEach((p) => {
+    const st = status(p.score);
+    let q: Quote | null = null;
+    if (p.emptyText) q = { text: clip(p.emptyText), kind: "empty" };
+    else if (p.vagueUnit && st !== "strong") q = { text: clip(p.vagueUnit), kind: "vague" };
+    else if (p.cands.length) {
+      const pick = p.cands.find((c) => !used.has(c.u)) ?? p.cands[0];
+      used.add(pick.u);
+      q = { text: clip(pick.u), kind: "found" };
+    } else {
+      const near = units.find((u) => TOPIC_RE[p.rb.id].test(u) && !used.has(u));
+      if (near) { used.add(near); q = { text: clip(near), kind: "anchor" }; }
+    }
+    quotes.set(p.rb.id, q);
+  });
 
+  const categories: CategoryResult[] = partial.map((p) => {
+    const q = quotes.get(p.rb.id) ?? null;
+    const prefix = !q
+      ? "Nothing in your PRD covers this yet. "
+      : q.kind === "empty"
+        ? "This section exists but is only a placeholder. "
+        : "";
     return {
-      id: rb.id,
-      label: rb.label,
-      weight: rb.weight,
-      score,
-      status: status(score),
-      found,
-      missing,
-      quote,
-      why: rb.why,
-      add: fillQuote(rb.add, quote),
-      question: rb.question,
+      id: p.rb.id,
+      label: p.rb.label,
+      weight: p.rb.weight,
+      score: p.score,
+      status: status(p.score),
+      found: p.found,
+      missing: p.missing,
+      quote: q,
+      why: p.rb.why,
+      add: prefix + fillQuote(p.rb.add, q),
+      question: p.rb.question,
     };
   });
 
   const overall = Math.round(categories.reduce((a, c) => a + (c.score * c.weight) / 100, 0));
-
   const weakest = [...categories]
     .sort((a, b) => (100 - b.score) * b.weight - (100 - a.score) * a.weight)
     .slice(0, 3)
     .map((c) => c.id);
-
   const strongest = [...categories].sort((a, b) => b.score - a.score || b.weight - a.weight)[0].id;
-
-  const rewrite = buildRewrite(text, categories);
 
   return {
     id: shortId(),
@@ -414,7 +589,9 @@ export function analyzePRD(text: string): AnalysisResult {
     categories,
     weakest,
     strongest,
-    rewrite,
+    rewrite: buildRewrite(text, categories),
+    title: titleOf(text),
+    text,
   };
 }
 
@@ -429,10 +606,11 @@ function buildRewrite(text: string, cats: CategoryResult[]): string {
     const c = cats.find((x) => x.id === rb.id)!;
     lines.push(`## ${rb.rewriteHeading}`);
     if (c.quote && c.quote.kind === "found") lines.push(`Your text: “${c.quote.text}”`);
+    if (c.quote && c.quote.kind === "empty") lines.push(`Currently a placeholder: “${c.quote.text}”`);
     if (c.status === "strong") {
       lines.push("Looks solid. Keep as is.");
     } else {
-      if (c.quote && c.quote.kind !== "found") lines.push(`Starting from: “${c.quote.text}”`);
+      if (c.quote && c.quote.kind === "anchor") lines.push(`Nearest text: “${c.quote.text}”`);
       lines.push(`Fill in: ${rb.rewriteFill}`);
     }
     lines.push("");
