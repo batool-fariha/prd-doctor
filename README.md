@@ -1,5 +1,7 @@
 # PRD Doctor
 
+**Live:** https://prd-doctor.vercel.app
+
 Paste a product requirements document, click **Analyze PRD**, get a 0-100 score across 12 categories. Every weak category comes with what's missing, why it matters, exactly what to add, and one question, each anchored to a sentence **quoted from your own PRD**.
 
 Next.js 16 · TypeScript · Tailwind 4 · shadcn/ui · PostHog. No auth, no database, no API keys required.
