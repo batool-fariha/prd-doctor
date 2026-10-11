@@ -57,7 +57,13 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 - **Input:** paste (Google Docs / Notion formatting is converted to headings and lists), or upload / drag in a **PDF, Word (.docx), `.md` or `.txt`** file. Files are parsed in the browser (`mammoth` for Word, `unpdf` for PDF, both loaded on demand) and never uploaded. Scanned PDFs (no selectable text) and legacy `.doc` files are not supported and give a clear message. Validation catches too-short, too-long (60k chars), code-like and repeated input with a clear message.
 - **Export:** copy the report as Markdown, download `.md`, or print / save as PDF.
 - **Fix tracking:** copy any fix, and mark fixes as addressed with a progress meter.
-- **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only.
+- **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only. After an improving re-score there is also a **before and after** card (`55 to 67`, with the previous radar dashed underneath).
+- **Diagnosis sequence:** a short "reading your PRD" pulse and category checklist before the result (click or Esc to skip; skipped for reduced-motion users).
+- **Score voice:** bands read as *Needs bed rest, Under observation, On the mend, Healthy, Cleared for review*, each with a one-line verdict; the top three fixes are labelled as a prescription (Rx 1 to 3).
+- **Linked radar:** hover a chart point or a category row to highlight the other; click to jump to that fix. A compact score pins to the header as you scroll.
+- **Improvement feedback:** an animated `+N since last time` badge and a small burst on a better score; marking every fix addressed offers "Re-score now".
+- **Dark mode:** deep violet theme, follows the system setting on first visit, toggle in the header, remembered per device. Print stays light.
+- **Charm:** cursor-follow glow on cards and a gentle tilt on the home sample card (off for touch and reduced-motion).
 
 ## Architecture
 
@@ -72,6 +78,8 @@ lib/paste.ts                 rich-text (HTML) paste to markdown-ish text
 lib/files.ts                 PDF / Word / text file reading, fully client-side
 lib/validate.ts              input checks (length, junk, repetition)
 lib/site.ts                  author name and links shown in the footer
+components/diagnosis.tsx     pre-result scanning overlay
+components/theme-toggle.tsx  light / dark switch (tokens live in app/globals.css)
 lib/report.ts                Markdown report and per-fix export
 lib/analytics.ts             PostHog wrapper (no-op without a key)
 ```

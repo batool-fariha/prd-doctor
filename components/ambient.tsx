@@ -15,9 +15,17 @@ export function Ambient() {
         root.current?.style.setProperty("--y", `${scrollY}`);
       });
     };
+    const move = (e: PointerEvent) => {
+      const el = (e.target as Element | null)?.closest?.(".glow, .panel, .lift") as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      el.style.setProperty("--my", `${e.clientY - r.top}px`);
+    };
     addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("pointermove", move, { passive: true });
     onScroll();
-    return () => { removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+    return () => { removeEventListener("scroll", onScroll); removeEventListener("pointermove", move); cancelAnimationFrame(raf); };
   }, []);
   return (
     <div ref={root} aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">

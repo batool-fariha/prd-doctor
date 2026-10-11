@@ -5,7 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, File, Spinner, Upload, X } from "@/components/icons";
 import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
+import { Diagnosis } from "@/components/diagnosis";
 import { LogoMark } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Tilt } from "@/components/tilt";
 import { analyzePRD, CATEGORY_ORDER, countWords, grade, MIN_WORDS, normalizeText } from "@/lib/analyzer";
 import { ACCEPT, readFile, type LoadedFile } from "@/lib/files";
 import { track } from "@/lib/analytics";
@@ -30,6 +33,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [scanning, setScanning] = useState<string | null>(null);
   const [source, setSource] = useState<Pick<LoadedFile, "name" | "kind" | "pages"> | null>(null);
 
   // "Edit and re-score" leaves the previous text as a draft; typing takes over from there.
@@ -57,7 +61,7 @@ export default function Home() {
       weak_categories: result.categories.filter((c) => c.status === "weak").length,
       is_rescore: Boolean(result.prev),
     });
-    router.push(`/result/${result.id}`);
+    setScanning(result.id); // the diagnosis overlay navigates when it finishes
   }
 
   async function loadFile(f: File) {
@@ -87,9 +91,10 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6">
+      {scanning && <Diagnosis onDone={() => router.push(`/result/${scanning}`)} />}
       <header className="flex items-center justify-between border-b py-5">
         <span className="serif flex items-center gap-2.5 text-xl"><LogoMark />PRD Doctor</span>
-        <span className="hidden font-mono text-xs text-muted-foreground sm:block">Private · runs in your browser</span>
+        <div className="flex items-center gap-4"><span className="hidden font-mono text-xs text-muted-foreground sm:block">Private · runs in your browser</span><ThemeToggle /></div>
       </header>
 
       <section className="grid items-center gap-14 py-14 md:grid-cols-[1.15fr_1fr] md:py-24">
@@ -98,7 +103,7 @@ export default function Home() {
           <h1 className="serif rise text-[2.6rem] leading-[1.06] sm:text-6xl" style={delay(1)}>
             Is your PRD <em className="mark">ready</em> for review?
           </h1>
-          <p className="rise mt-6 max-w-md text-[15px] text-[#3B3650]" style={delay(2)}>
+          <p className="rise mt-6 max-w-md text-[15px] text-ink2" style={delay(2)}>
             Paste it in. You get a score out of 100 across twelve categories, and every fix quotes the sentence it is about. Nothing is invented on your behalf.
           </p>
           <a href="#paste" className="btn-solid rise mt-8 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium" style={delay(3)}>
@@ -111,7 +116,7 @@ export default function Home() {
       <div className="rise -mx-6 mb-16 overflow-hidden border-y py-4 [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]" style={delay(5)} aria-hidden>
         <div className="marquee gap-3 pr-3">
           {[...CATEGORY_ORDER, ...CATEGORY_ORDER].map((c, i) => (
-            <span key={i} className="whitespace-nowrap rounded-full border bg-white/70 px-4 py-1.5 text-sm">{c.label}</span>
+            <span key={i} className="whitespace-nowrap rounded-full border bg-surface/70 px-4 py-1.5 text-sm">{c.label}</span>
           ))}
         </div>
       </div>
@@ -129,15 +134,15 @@ export default function Home() {
         }}
       >
         <div className={`editor panel overflow-hidden ${dragging ? "dragging" : ""} ${error ? "has-error" : ""}`}>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-white/60 px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-surface/60 px-5 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="eyebrow">Your PRD</span>
               {source && (
-                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border bg-white py-1 pl-3 pr-1.5 text-xs">
-                  <File className="size-3.5 shrink-0 text-[#6D4AFF]" />
+                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border bg-surface py-1 pl-3 pr-1.5 text-xs">
+                  <File className="size-3.5 shrink-0 text-violet2" />
                   <span className="truncate">{source.name}</span>
                   {source.pages ? <span className="shrink-0 font-mono text-muted-foreground">{source.pages} p</span> : null}
-                  <button type="button" onClick={reset} aria-label="Remove file and clear text" className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-[#F4F1FB]"><X className="size-3" /></button>
+                  <button type="button" onClick={reset} aria-label="Remove file and clear text" className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-surface2"><X className="size-3" /></button>
                 </span>
               )}
             </div>
@@ -162,37 +167,37 @@ export default function Home() {
             {!text && !busy && (
               <div className="pointer-events-none absolute inset-0 grid place-items-center p-6">
                 <div className="max-w-sm text-center">
-                  <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border bg-white text-[#6D4AFF]"><File className="size-5" /></span>
+                  <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border bg-surface text-violet2"><File className="size-5" /></span>
                   <p className="serif text-3xl leading-tight">Paste your PRD</p>
-                  <p className="mt-2 text-sm text-[#565170]">or drop a file anywhere in this box</p>
+                  <p className="mt-2 text-sm text-ink3">or drop a file anywhere in this box</p>
                   <div className="pointer-events-auto mt-5 flex flex-wrap items-center justify-center gap-2">
-                    <button type="button" onClick={() => fileRef.current?.click()} className="btn-line inline-flex h-9 items-center gap-2 bg-white px-3.5 text-[13px]"><Upload />Upload a file</button>
+                    <button type="button" onClick={() => fileRef.current?.click()} className="btn-line inline-flex h-9 items-center gap-2 bg-surface px-3.5 text-[13px]"><Upload />Upload a file</button>
                     <button type="button" onClick={() => { set(SAMPLE); setSource(null); }} className="btn-line inline-flex h-9 items-center px-3.5 text-[13px]">Try a sample</button>
                   </div>
                   <p className="mt-5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-                    {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-white/70 px-1.5 py-0.5">{x}</span>)}
+                    {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-surface/70 px-1.5 py-0.5">{x}</span>)}
                   </p>
                 </div>
               </div>
             )}
             {busy && (
-              <div className="absolute inset-0 grid place-items-center bg-white/80 backdrop-blur-[2px]" role="status">
-                <p className="flex items-center gap-3 text-sm"><Spinner className="text-[#6D4AFF]" />Reading {busy}…</p>
+              <div className="absolute inset-0 grid place-items-center bg-surface/80 backdrop-blur-[2px]" role="status">
+                <p className="flex items-center gap-3 text-sm"><Spinner className="text-violet2" />Reading {busy}…</p>
               </div>
             )}
             {dragging && (
-              <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-[#A78BFA] bg-[#F4F1FB]/90">
+              <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-[#A78BFA] bg-surface2/90">
                 <p className="serif text-3xl">Drop to load</p>
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t bg-white/60 px-5 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t bg-surface/60 px-5 py-3.5">
             <WordMeter words={words} />
             <div className="flex items-center gap-3">
               <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-                <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">⌘</kbd>
-                <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
+                <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">⌘</kbd>
+                <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
               </span>
               <button type="button" onClick={analyze} disabled={Boolean(busy)} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium disabled:opacity-60">
                 {draft && typed === null ? "Re-score" : "Analyze PRD"} <ArrowRight />
@@ -214,10 +219,10 @@ export default function Home() {
           ["02", "Stays on your device", "Scoring runs in your browser. Files and text are never uploaded."],
           ["03", "Free, no account", "No sign-up and no limits. Paste, score, fix, and score again."],
         ].map(([n, t, d]) => (
-          <div key={n} className="bg-white/80 p-6">
-            <span className="font-mono text-xs text-[#6D4AFF]">{n}</span>
+          <div key={n} className="glow bg-surface/80 p-6">
+            <span className="font-mono text-xs text-violet2">{n}</span>
             <h3 className="serif mt-3 text-xl">{t}</h3>
-            <p className="mt-2 text-sm text-[#3B3650]">{d}</p>
+            <p className="mt-2 text-sm text-ink2">{d}</p>
           </div>
         ))}
       </Reveal>
@@ -252,7 +257,8 @@ export default function Home() {
 function Specimen() {
   const rows: [string, number][] = [["Problem clarity", 92], ["Success metrics", 74], ["Edge cases", 38], ["Risks", 16]];
   return (
-    <div className="float panel relative mx-auto w-full max-w-sm p-6" aria-hidden>
+    <Tilt className="mx-auto w-full max-w-sm">
+    <div className="float panel relative p-6" aria-hidden>
       <div className="mb-5 flex items-center justify-between">
         <span className="eyebrow">Sample reading</span>
         <span className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em]" style={{ background: "#FBF3DB", color: "#956400" }}>Needs work</span>
@@ -265,11 +271,12 @@ function Specimen() {
         {rows.map(([k, v], i) => (
           <div key={k}>
             <div className="mb-1 flex justify-between text-xs"><span>{k}</span><span className="font-mono text-muted-foreground">{v}</span></div>
-            <div className="h-[3px] rounded-full bg-[#E7E1F7]"><div className="bar-fill now h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#6D4AFF]" style={{ "--w": `${v}%`, transitionDelay: `${400 + i * 120}ms` } as React.CSSProperties} /></div>
+            <div className="h-[3px] rounded-full bg-track"><div className="bar-fill now h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#6D4AFF]" style={{ "--w": `${v}%`, transitionDelay: `${400 + i * 120}ms` } as React.CSSProperties} /></div>
           </div>
         ))}
       </div>
     </div>
+    </Tilt>
   );
 }
 
@@ -277,7 +284,7 @@ function WordMeter({ words }: { words: number }) {
   const ready = words >= MIN_WORDS;
   return (
     <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground" aria-live="polite">
-      <span className="h-[4px] w-24 overflow-hidden rounded-full bg-[#E7E1F7]" aria-hidden>
+      <span className="h-[4px] w-24 overflow-hidden rounded-full bg-track" aria-hidden>
         <span className="block h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#6D4AFF] transition-[width] duration-500" style={{ width: `${Math.min(100, (words / MIN_WORDS) * 100)}%` }} />
       </span>
       <span>{ready ? `${words.toLocaleString()} words` : `${words} of ${MIN_WORDS} words needed`}</span>

@@ -8,7 +8,7 @@ export default function NotFound() {
       <section className="rise max-w-xl py-24">
         <p className="eyebrow mb-4">404</p>
         <h1 className="serif text-5xl leading-[1.06]">This page doesn&apos;t exist.</h1>
-        <p className="mt-5 text-[15px] text-[#3B3650]">The link may be mistyped or out of date. Your PRD is a better use of the next minute anyway.</p>
+        <p className="mt-5 text-[15px] text-ink2">The link may be mistyped or out of date. Your PRD is a better use of the next minute anyway.</p>
         <Link href="/" className="btn-solid mt-8 inline-flex h-10 items-center px-5 text-sm font-medium">Analyze a PRD</Link>
       </section>
     </main>
