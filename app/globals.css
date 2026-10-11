@@ -172,7 +172,7 @@ body { line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .marquee:hover { animation-play-state: paused; }
 @keyframes marquee { to { transform: translateX(-50%); } }
 
-textarea:focus-visible { box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.22) !important; border-color: #A78BFA !important; }
+textarea[data-slot="textarea"]:not(.bare):focus-visible { box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.22) !important; border-color: #A78BFA !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .blob, .float, .marquee, .radar-draw { animation: none !important; }
@@ -189,3 +189,12 @@ textarea:focus-visible { box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.22) !import
   details > summary { break-after: avoid; }
   section, details { break-inside: avoid; }
 }
+
+/* Editor card */
+.editor { transition: border-color 200ms, box-shadow 250ms; }
+.editor:focus-within { border-color: #A78BFA; box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.2); }
+.editor.dragging { border-color: #A78BFA; }
+.editor.has-error { border-color: #E3A5A8; }
+.editor textarea:focus-visible { outline: none; box-shadow: none; }
+.chip-btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 5px 10px; color: #3B3650; transition: background 200ms, color 200ms; }
+.chip-btn:hover { background: #F4F1FB; color: #17132B; }

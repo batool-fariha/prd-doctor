@@ -388,8 +388,12 @@ interface Section {
   level: number; // 0 for "Label:" style
 }
 
+/** A short standalone line such as "Risks" or "Success metrics": how most Word and PDF documents mark sections. */
+const isBareHeading = (l: string) =>
+  l.length <= 40 && l.split(/\s+/).length <= 4 && !/[.!?,;:]$/.test(l) && RUBRICS.some((rb) => SECTION_RE[rb.id].test(l));
+
 const isHeadingLine = (l: string) =>
-  /^#{1,6}\s+\S/.test(l) || /^\*\*[^*]{2,60}\*\*:?$/.test(l) || /^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l);
+  /^#{1,6}\s+\S/.test(l) || /^\*\*[^*]{2,60}\*\*:?$/.test(l) || /^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l) || isBareHeading(l);
 
 function isPlaceholderLine(line: string): boolean {
   const l = line.replace(/^\s*([-*•]|\d+[.)])\s*/, "").replace(/\*\*/g, "");
@@ -413,6 +417,9 @@ function parseSections(lines: string[]): Section[] {
     } else if ((m = line.match(/^([A-Z][A-Za-z0-9 /&'-]{1,40}):\s*(.*)$/))) {
       push();
       cur = { title: m[1].trim(), body: m[2], level: 0 };
+    } else if (isBareHeading(line)) {
+      push();
+      cur = { title: line, body: "", level: 1 };
     } else if (cur && line) {
       cur.body += (cur.body ? "\n" : "") + line;
     }
@@ -464,7 +471,8 @@ export function analyzePRD(input: string): AnalysisResult {
   for (const l0 of lines) {
     const l = l0.trim();
     const head = l.match(/^#{1,6}\s+(.+?)\s*#*$/)?.[1] ?? l.match(/^\*\*(.{2,50}?)\*\*/)?.[1] ?? l.match(/^([A-Z][A-Za-z0-9 \/&'-]{1,40}):/)?.[1];
-    if (head !== undefined && (isHeadingLine(l) || /^[A-Z][A-Za-z0-9 \/&'-]{1,40}:\s*\S/.test(l) || /^\*\*/.test(l))) {
+    if (isBareHeading(l)) cur = RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(l));
+    else if (head !== undefined && (isHeadingLine(l) || /^[A-Z][A-Za-z0-9 \/&'-]{1,40}:\s*\S/.test(l) || /^\*\*/.test(l))) {
       const t = head.replace(/[*_:]/g, "").trim();
       cur = RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
     }

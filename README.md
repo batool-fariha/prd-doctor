@@ -41,7 +41,7 @@ Status: **strong** ≥ 70, **ok** 40-69, **weak** < 40. The **top 3 weaknesses**
 
 ### How the checks avoid cheap wins
 
-- **Section-aware.** The PRD is split into sections (`# Heading`, `**Bold**`, or `Label:` lines). A matching section that has real content earns the category's headline signal.
+- **Section-aware.** The PRD is split into sections (`# Heading`, `**Bold**`, `Label:` lines, or a plain standalone line like `Risks`, as in most Word and PDF files). A matching section that has real content earns the category's headline signal.
 - **Placeholders don't count.** `Risks: none`, `TBD`, `N/A`, or an empty heading are detected, capped at 15, and shown as a "Placeholder section" quote.
 - **One sentence can't pay everywhere.** A sentence earns credit in at most three categories: the section it sits in first, then its best matches. Heading-only lines never score.
 - **Specifics are rewarded.** Numbers (limits, counts) and named owners add a small bonus where they matter.
@@ -54,7 +54,7 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 ## Features
 
 - **Edit and re-score:** returns to the editor with your text; the result shows `+N since last time` for the same PRD title. Recent analyses are listed on the home page.
-- **Input:** paste (Google Docs / Notion formatting is converted to headings and lists), or upload / drag in a `.md` or `.txt` file. Validation catches too-short, too-long (60k chars), code-like and repeated input with a clear message.
+- **Input:** paste (Google Docs / Notion formatting is converted to headings and lists), or upload / drag in a **PDF, Word (.docx), `.md` or `.txt`** file. Files are parsed in the browser (`mammoth` for Word, `unpdf` for PDF, both loaded on demand) and never uploaded. Scanned PDFs (no selectable text) and legacy `.doc` files are not supported and give a clear message. Validation catches too-short, too-long (60k chars), code-like and repeated input with a clear message.
 - **Export:** copy the report as Markdown, download `.md`, or print / save as PDF.
 - **Fix tracking:** copy any fix, and mark fixes as addressed with a progress meter.
 - **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only.
@@ -69,7 +69,9 @@ app/api/og/route.tsx         1200×630 share card PNG (next/og), also the "Downl
 lib/analyzer.ts              rubrics, section parsing, scoring, quotes, rewrite, share payload
 lib/storage.ts               localStorage: results, history, draft, "addressed" fixes
 lib/paste.ts                 rich-text (HTML) paste to markdown-ish text
+lib/files.ts                 PDF / Word / text file reading, fully client-side
 lib/validate.ts              input checks (length, junk, repetition)
+lib/site.ts                  author name and links shown in the footer
 lib/report.ts                Markdown report and per-fix export
 lib/analytics.ts             PostHog wrapper (no-op without a key)
 ```

@@ -2,10 +2,12 @@
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, Upload } from "@/components/icons";
+import { ArrowRight, File, Spinner, Upload, X } from "@/components/icons";
+import { Reveal } from "@/components/reveal";
 import { CountUp } from "@/components/count-up";
 import { LogoMark } from "@/components/logo";
-import { analyzePRD, CATEGORY_ORDER, countWords, grade, normalizeText } from "@/lib/analyzer";
+import { analyzePRD, CATEGORY_ORDER, countWords, grade, MIN_WORDS, normalizeText } from "@/lib/analyzer";
+import { ACCEPT, readFile, type LoadedFile } from "@/lib/files";
 import { track } from "@/lib/analytics";
 import { clearDraft, clearHistory, parseHistory, readDraft, readHistoryRaw, saveResult, subscribe } from "@/lib/storage";
 import { htmlToText } from "@/lib/paste";
@@ -27,6 +29,8 @@ export default function Home() {
   const [typed, setTyped] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [source, setSource] = useState<Pick<LoadedFile, "name" | "kind" | "pages"> | null>(null);
 
   // "Edit and re-score" leaves the previous text as a draft; typing takes over from there.
   const draft = useSyncExternalStore(subscribe, readDraft, () => "");
@@ -36,6 +40,7 @@ export default function Home() {
   const words = countWords(text);
 
   function set(v: string) { setTyped(v); setError(""); }
+  function reset() { set(""); setSource(null); }
 
   function analyze() {
     const problem = validatePRD(text);
@@ -56,11 +61,17 @@ export default function Home() {
   }
 
   async function loadFile(f: File) {
-    if (f.size > 1_000_000) return setError("That file is over 1 MB. Paste the relevant sections instead.");
-    if (!/\.(md|markdown|txt)$/i.test(f.name) && !f.type.startsWith("text/")) {
-      return setError(`“${f.name}” can't be read here. Use a .md or .txt file, or copy and paste from Word, Google Docs or Notion.`);
+    setError("");
+    setBusy(f.name);
+    try {
+      const loaded = await readFile(f);
+      set(loaded.text);
+      setSource({ name: loaded.name, kind: loaded.kind, pages: loaded.pages });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That file couldn't be read.");
+    } finally {
+      setBusy(null);
     }
-    set(normalizeText(await f.text()));
   }
 
   function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
@@ -107,50 +118,86 @@ export default function Home() {
 
       <section
         id="paste"
-        className="rise scroll-mt-8 pb-16"
+        className="rise scroll-mt-8 pb-14"
         style={delay(6)}
         onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragging(true); } }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
         onDrop={(e) => {
           setDragging(false);
           const f = e.dataTransfer.files[0];
           if (f) { e.preventDefault(); void loadFile(f); }
         }}
       >
-        <div className="relative">
-          <Textarea
-            value={text}
-            onChange={(e) => set(e.target.value)}
-            onPaste={onPaste}
-            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") analyze(); }}
-            placeholder="Paste your PRD here, or drop a .md / .txt file."
-            className={`min-h-[340px] resize-y rounded-xl border bg-white/90 p-6 text-[15px] leading-relaxed shadow-none transition-colors ${dragging ? "!border-[#A78BFA] bg-[#F4F1FB]" : ""}`}
-            aria-label="PRD text"
-            aria-invalid={Boolean(error)}
-          />
-          {dragging && (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-xl border-2 border-dashed border-[#A78BFA] bg-[#F4F1FB]/80">
-              <p className="serif text-2xl">Drop to load</p>
+        <div className={`editor panel overflow-hidden ${dragging ? "dragging" : ""} ${error ? "has-error" : ""}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-white/60 px-5 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="eyebrow">Your PRD</span>
+              {source && (
+                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border bg-white py-1 pl-3 pr-1.5 text-xs">
+                  <File className="size-3.5 shrink-0 text-[#6D4AFF]" />
+                  <span className="truncate">{source.name}</span>
+                  {source.pages ? <span className="shrink-0 font-mono text-muted-foreground">{source.pages} p</span> : null}
+                  <button type="button" onClick={reset} aria-label="Remove file and clear text" className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-[#F4F1FB]"><X className="size-3" /></button>
+                </span>
+              )}
             </div>
-          )}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs text-muted-foreground">
-            <span>{words.toLocaleString()} words</span>
-            <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 underline-offset-4 hover:text-foreground hover:underline"><Upload />Upload .md / .txt</button>
-            <button type="button" onClick={() => set(SAMPLE)} className="underline-offset-4 hover:text-foreground hover:underline">Use a sample</button>
-            {text && <button type="button" onClick={() => set("")} className="underline-offset-4 hover:text-foreground hover:underline">Clear</button>}
-            <input ref={fileRef} type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadFile(f); e.target.value = ""; }} />
+            <div className="flex items-center gap-1 text-xs">
+              <button type="button" onClick={() => fileRef.current?.click()} className="chip-btn"><Upload className="size-3.5" />Upload</button>
+              <button type="button" onClick={() => { set(SAMPLE); setSource(null); }} className="chip-btn">Sample</button>
+              {text && <button type="button" onClick={reset} className="chip-btn">Clear</button>}
+              <input ref={fileRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadFile(f); e.target.value = ""; }} />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-              <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">⌘</kbd>
-              <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
-            </span>
-            <button type="button" onClick={analyze} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
-              {draft && typed === null ? "Re-score" : "Analyze PRD"} <ArrowRight />
-            </button>
+
+          <div className="relative">
+            <Textarea
+              value={text}
+              onChange={(e) => { set(e.target.value); if (source) setSource(null); }}
+              onPaste={onPaste}
+              onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") analyze(); }}
+              className="bare min-h-[380px] resize-y rounded-none border-0 bg-transparent p-6 text-[15px] leading-relaxed shadow-none"
+              aria-label="PRD text"
+              aria-invalid={Boolean(error)}
+            />
+            {!text && !busy && (
+              <div className="pointer-events-none absolute inset-0 grid place-items-center p-6">
+                <div className="max-w-sm text-center">
+                  <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border bg-white text-[#6D4AFF]"><File className="size-5" /></span>
+                  <p className="serif text-3xl leading-tight">Paste your PRD</p>
+                  <p className="mt-2 text-sm text-[#565170]">or drop a file anywhere in this box</p>
+                  <div className="pointer-events-auto mt-5 flex flex-wrap items-center justify-center gap-2">
+                    <button type="button" onClick={() => fileRef.current?.click()} className="btn-line inline-flex h-9 items-center gap-2 bg-white px-3.5 text-[13px]"><Upload />Upload a file</button>
+                    <button type="button" onClick={() => { set(SAMPLE); setSource(null); }} className="btn-line inline-flex h-9 items-center px-3.5 text-[13px]">Try a sample</button>
+                  </div>
+                  <p className="mt-5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                    {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-white/70 px-1.5 py-0.5">{x}</span>)}
+                  </p>
+                </div>
+              </div>
+            )}
+            {busy && (
+              <div className="absolute inset-0 grid place-items-center bg-white/80 backdrop-blur-[2px]" role="status">
+                <p className="flex items-center gap-3 text-sm"><Spinner className="text-[#6D4AFF]" />Reading {busy}…</p>
+              </div>
+            )}
+            {dragging && (
+              <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-[#A78BFA] bg-[#F4F1FB]/90">
+                <p className="serif text-3xl">Drop to load</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t bg-white/60 px-5 py-3.5">
+            <WordMeter words={words} />
+            <div className="flex items-center gap-3">
+              <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
+                <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">⌘</kbd>
+                <kbd className="rounded border bg-[#F4F1FB] px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
+              </span>
+              <button type="button" onClick={analyze} disabled={Boolean(busy)} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium disabled:opacity-60">
+                {draft && typed === null ? "Re-score" : "Analyze PRD"} <ArrowRight />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -160,6 +207,21 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <Reveal className="grid gap-px overflow-hidden rounded-2xl border bg-border pb-0 sm:grid-cols-3">
+        {[
+          ["01", "Quotes, never invents", "Every fix points at a sentence you wrote. If something is missing, it says so."],
+          ["02", "Stays on your device", "Scoring runs in your browser. Files and text are never uploaded."],
+          ["03", "Free, no account", "No sign-up and no limits. Paste, score, fix, and score again."],
+        ].map(([n, t, d]) => (
+          <div key={n} className="bg-white/80 p-6">
+            <span className="font-mono text-xs text-[#6D4AFF]">{n}</span>
+            <h3 className="serif mt-3 text-xl">{t}</h3>
+            <p className="mt-2 text-sm text-[#3B3650]">{d}</p>
+          </div>
+        ))}
+      </Reveal>
+      <div className="h-16" />
 
       {history.length > 0 && (
         <section className="rise border-t pb-24 pt-8" style={delay(7)}>
@@ -207,6 +269,18 @@ function Specimen() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function WordMeter({ words }: { words: number }) {
+  const ready = words >= MIN_WORDS;
+  return (
+    <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground" aria-live="polite">
+      <span className="h-[4px] w-24 overflow-hidden rounded-full bg-[#E7E1F7]" aria-hidden>
+        <span className="block h-full rounded-full bg-gradient-to-r from-[#A78BFA] to-[#6D4AFF] transition-[width] duration-500" style={{ width: `${Math.min(100, (words / MIN_WORDS) * 100)}%` }} />
+      </span>
+      <span>{ready ? `${words.toLocaleString()} words` : `${words} of ${MIN_WORDS} words needed`}</span>
     </div>
   );
 }
