@@ -657,6 +657,25 @@ export function decodePayload(s: string | undefined | null): SharePayload | null
   }
 }
 
+/** Compact public code for a score: 13 bytes (overall + 12 categories) as 18 URL-safe characters. */
+export function encodeShort(p: SharePayload): string {
+  return btoa(String.fromCharCode(p.o, ...p.c)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodeShort(code: string | undefined | null): SharePayload | null {
+  if (!code) return null;
+  try {
+    const b64 = code.replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+    if (bin.length !== CATEGORY_ORDER.length + 1) return null;
+    const n = [...bin].map((ch) => ch.charCodeAt(0));
+    if (n.some((v) => v > 100)) return null;
+    return { v: 1, o: n[0], c: n.slice(1) };
+  } catch {
+    return null;
+  }
+}
+
 /** Previous run, for the before/after share card. Scores only; `c` is absent for older history entries. */
 export interface PrevPayload { o: number; c?: number[] }
 

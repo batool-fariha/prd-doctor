@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { CATEGORY_ORDER, decodePayload, decodePrev, grade, shareMetrics } from "@/lib/analyzer";
+import { CATEGORY_ORDER, decodePayload, decodePrev, encodeShort, grade, shareMetrics } from "@/lib/analyzer";
 
 function headline(score: number, best: string, worst: string) {
   if (score >= 80) return "Ready for review.";
@@ -19,8 +19,7 @@ export async function GET(req: Request) {
   const rows = CATEGORY_ORDER.map((m, i) => ({ label: m.label, score: p.c[i] }));
   const best = [...rows].sort((a, b) => b.score - a.score)[0].label;
   const worst = [...rows].sort((a, b) => a.score - b.score)[0].label;
-  const id = (searchParams.get("id") ?? "").match(/^[a-z0-9]{4,16}$/)?.[0];
-  const link = origin.replace(/^https?:\/\//, "") + (id ? `/result/${id}` : "");
+  const link = origin.replace(/^https?:\/\//, "") + "/r/" + encodeShort(p); // opens the shared score anywhere
 
   const S = 380, c = S / 2, R = 150, n = rows.length;
   const pt = (i: number, r: number) => {
@@ -36,9 +35,12 @@ export async function GET(req: Request) {
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "44px 64px 48px", background: "linear-gradient(135deg, #FBFAFE 0%, #ECE6FF 55%, #D9CEFF 100%)", color: "#17132B", fontFamily: "sans-serif" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28 }}>
-          <svg width="40" height="40" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#6D4AFF" /><path d="M5.5 17h5l2.8-7.2 4.4 12.4 3-8.2 1.6 3H26.5" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          PRD Doctor
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28 }}>
+            <svg width="40" height="40" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#6D4AFF" /><path d="M5.5 17h5l2.8-7.2 4.4 12.4 3-8.2 1.6 3H26.5" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            PRD Doctor
+          </div>
+          <div style={{ display: "flex", fontSize: 22, opacity: 0.8, whiteSpace: "nowrap" }}>{link}</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -72,7 +74,7 @@ export async function GET(req: Request) {
           </svg>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 14 }}>
             {metrics.map((m) => (
               <div key={m.k} style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.85)", border: "1px solid #D9CEFF", borderRadius: 14, padding: "12px 20px" }}>
@@ -81,7 +83,6 @@ export async function GET(req: Request) {
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", fontSize: 22, opacity: 0.75 }}>{link}</div>
         </div>
       </div>
     ),

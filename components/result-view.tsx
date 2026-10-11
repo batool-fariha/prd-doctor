@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Copy, Download, File, Minus, Pencil, Plus, Printer, Share } from "@/components/icons";
-import { CATEGORY_ORDER, decodePayload, encodePayload, encodePrev, grade, shareMetrics, statusTone, toSharePayload, type AnalysisResult, type CategoryResult, type PrevPayload, type SharePayload } from "@/lib/analyzer";
+import { CATEGORY_ORDER, decodePayload, encodePayload, encodePrev, encodeShort, grade, shareMetrics, statusTone, toSharePayload, type AnalysisResult, type CategoryResult, type PrevPayload, type SharePayload } from "@/lib/analyzer";
 import { clearDraft, parseDone, parseHistory, readDone, readHistoryRaw, readRaw, setDraft, subscribe, toggleDone } from "@/lib/storage";
 import { downloadText, fixMarkdown, reportMarkdown } from "@/lib/report";
 import { track } from "@/lib/analytics";
@@ -228,7 +228,8 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
   const [mode, setMode] = useState<CardMode>("score");
   const progress = Boolean(prev) && mode === "progress";
   const q = `s=${encodePayload(payload)}${progress && prev ? `&p=${encodePrev(prev)}` : ""}`;
-  const url = () => `${window.location.origin}/result/${id}?${q}`;
+  // Plain score: short public link. Before and after: long link carrying the previous scores too.
+  const url = () => (progress ? `${window.location.origin}/result/${id}?${q}` : `${window.location.origin}/r/${encodeShort(payload)}`);
   const text = progress && prev ? `My PRD went from ${prev.o} to ${payload.o} on PRD Doctor` : `My PRD scored ${payload.o}/100 on PRD Doctor`;
 
   async function share() {
