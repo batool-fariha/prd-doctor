@@ -69,6 +69,8 @@ interface Signal {
   section?: boolean;
   /** tested against the whole text instead of single sentences (multi-line patterns) */
   text?: boolean;
+  /** only counts when an earlier signal in the same category already matched */
+  gated?: boolean;
 }
 
 interface Rubric {
@@ -124,11 +126,11 @@ const RUBRICS: Rubric[] = [
     label: "Evidence",
     weight: 10,
     signals: [
-      { label: "a research or data source (interviews, analytics, tickets…)", weight: 35, test: /\b(interviews?|surveys?|user research|usability|customer (feedback|calls?)|support tickets?|tickets?|NPS|CSAT|analytics|data (shows?|suggests?)|we (saw|found|observed|heard)|session recordings?|a\/b|study|benchmark|competitors?)\b/i },
+      { label: "a research or data source (interviews, analytics, tickets…)", weight: 35, test: /^(?=.*\b(interviews?|surveys?|user research|usability|customer (feedback|calls?)|support tickets?|tickets?|NPS|CSAT|analytics|data (shows?|suggests?)|session recordings?|a\/b|study|benchmark|competitors?)\b)(?=.*(\d|\b(found|showed|told us|said|reported|observed|heard|saw|according to)\b)).*/i },
       { label: "specific numbers with units", weight: 30, test: /\b\d+(\.\d+)?\s?(%|percent|x\b|users|customers|tickets|interviews|respondents|hours|minutes|days)/i },
       { label: "a source reference (n=, link, report name)", weight: 15, test: /\bn\s?=\s?\d+|https?:\/\/|\b(report|dashboard|deck|doc)\b/i },
-      { label: "a direct customer quote", weight: 10, test: /["“”][^"“”]{15,}["“”]/ },
-      { label: "a date or time window for the data", weight: 10, test: /\b(last (week|month|quarter|year)|Q[1-4]|20\d\d)\b/i },
+      { label: "a direct customer quote", weight: 10, test: /\b(said|says|told|wrote|according to|customers?|users?|participants?|interviewees?)\b[^"“”\n]{0,60}["“][^"“”\n]{15,}["”]|["“][^"“”\n]{15,}["”][^\n]{0,40}\b(said|says|told|wrote|customers?|users?|participants?)\b/i },
+      { label: "a date or time window for the data", weight: 10, gated: true, test: /\b(last (week|month|quarter|year)|Q[1-4]|20\d\d)\b/i },
     ],
     why: "Opinions are cheap. Evidence is what separates a bet from a hunch and lets reviewers decide whether the problem is real before spending engineering time.",
     add: "Cite at least one source with a number: how many users/tickets/interviews, from when, and what they said. Back up {q} with it.",
@@ -141,10 +143,10 @@ const RUBRICS: Rubric[] = [
     label: "User pain severity",
     weight: 8,
     signals: [
-      { label: "severity language (critical, blocker, costly…)", weight: 30, test: /\b(critical|severe|blockers?|blocking|major|painful|costly|urgent|top (issue|complaint|request)|churn\w*|cancel\w*)\b/i },
-      { label: "how often it happens", weight: 25, test: /\b(daily|weekly|monthly|often|frequently|per (day|week|month)|every (day|week|time)|\d+\s*(times|x)\b)/i },
-      { label: "a quantified impact (money, time, tickets)", weight: 30, test: /(\$\s?\d|\b\d+\s?(%|hours|minutes|tickets)\b|\b(revenue|retention|conversion)\b)/i },
-      { label: "the current workaround", weight: 15, test: /\b(workaround|currently|today|manual\w*|spreadsheets?|copy.?paste|alternatives?)\b/i },
+      { label: "severity language (critical, blocker, costly…)", weight: 25, test: /\b(critical|severe|blockers?|blocking|major|painful|costly|urgent|top (issue|complaint|request)|churn\w*|cancel\w*)\b/i },
+      { label: "how often it happens", weight: 20, test: /\b(daily|weekly|monthly|often|frequently|per (day|week|month)|every (day|week|time)|\d+\s*(times|x)\b)/i },
+      { label: "a quantified impact (money, time, tickets)", weight: 35, test: /(\$\s?\d|\b\d+\s?(%|hours|minutes|tickets|days|weeks)\b|\b\d+x\b)/i },
+      { label: "the current workaround", weight: 20, test: /\b(workaround|currently|today|manual\w*|spreadsheets?|copy.?paste|alternatives?)\b/i },
     ],
     why: "Severity decides priority. A frequent, expensive pain justifies a roadmap slot; a rare annoyance doesn't, no matter how elegant the solution.",
     add: "State how often the pain occurs, what it costs (time, money, churn) and what people do today instead. Quantify {q}.",
@@ -189,7 +191,7 @@ const RUBRICS: Rubric[] = [
     label: "Acceptance criteria",
     weight: 10,
     signals: [
-      { label: "Given / When / Then style behaviour", weight: 35, test: /\bgiven\b[\s\S]{0,250}\bwhen\b[\s\S]{0,250}\bthen\b/i },
+      { label: "Given / When / Then style behaviour", weight: 35, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
       { label: "an Acceptance Criteria section", weight: 25, test: /acceptance criteria|definition of done|\bDoD\b/i },
       { label: "testable wording (must, only, at least, within…)", weight: 20, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d)\b/i, min: 3 },
       { label: "a checklist or numbered requirements", weight: 20, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)]))\s*\S/m, min: 2 },
@@ -253,7 +255,7 @@ const RUBRICS: Rubric[] = [
     weight: 6,
     signals: [
       { label: "priority labels (P0/P1, must/should/could)", weight: 40, test: /\bP[0-3]\b|\bMoSCoW\b|\b(must|should|could)-have\b|\b(must|should|could) have:|\bnice[- ]to[- ]have\b|\b[Pp]rioriti[sz]\w+|\b[Pp]riority\b/ },
-      { label: "a prioritisation rationale (impact, effort, RICE…)", weight: 30, test: /\b(RICE|ICE|impact|effort|ROI|trade-?offs?|Kano|opportunity cost)\b/i },
+      { label: "a prioritisation rationale (impact, effort, RICE…)", weight: 30, test: /\bRICE\b|\bICE score\b|impact\s*(vs\.?|and|\/|versus)\s*effort|effort\s*(vs\.?|and|\/|versus)\s*impact|\bKano\b|opportunity cost|\bROI\b|prioriti[sz]ed (by|because|based)|ranked by/i },
       { label: "sequencing (v1/v2, now/next/later)", weight: 30, test: /\b(phase \d|v1|v2|MVP|roadmap|now\/next\/later|fast follow)\b/i },
     ],
     why: "When everything is a must-have, nothing is. Ranked requirements are what let the team cut scope calmly when the schedule slips.",
@@ -267,8 +269,8 @@ const RUBRICS: Rubric[] = [
     label: "Experiment design",
     weight: 6,
     signals: [
-      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\b(experiments?|A\/B|split test|hypothesis|control|variant|treatment|holdout|pilot|beta|rollout|canary|feature flag)\b/i },
-      { label: "sample size, duration or significance", weight: 30, test: /\b(sample size|statistical\w*|significan\w+|confidence|power|MDE|p-?value|run for|\d+\s*(weeks|days))\b/i },
+      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\b(experiments?|A\/B|split test|hypothesis|control group|variant|treatment|holdout|pilot|beta|rollout|canary|feature flag)\b/i },
+      { label: "sample size, duration or significance", weight: 30, test: /\b(sample size|statistical\w*|significan\w+|confidence (interval|level)|statistical power|MDE|p-?value|run for|\d+\s*(weeks|days))\b/i },
       { label: "decision criteria (ship / kill / guardrail)", weight: 30, test: /\b(ship if|kill|success criteria|go\/no-go|guardrail|stop (if|when)|decision rule)\b/i },
     ],
     why: "A PRD without a test plan is a belief. An experiment turns it into a decision you can defend and reverse.",
@@ -295,30 +297,30 @@ RUBRICS.forEach((rb) => {
   rb.signals[0].section = true;
   rb.signals.forEach((sg) => {
     if (/section/i.test(sg.label)) sg.section = true;
-    if (/Given \/ When/.test(sg.label)) sg.text = true;
+    if (/Given \/ When/.test(sg.label)) { sg.text = true; sg.section = false; } // a format signal needs the format, not just a section
   });
 });
 
 const SECTION_RE: Record<CategoryId, RegExp> = {
-  problem: /^(problem|background|context|motivation|overview|why)\b/i,
-  user: /^(users?|personas?|audience|target|who)\b/i,
-  evidence: /^(evidence|research|data|insights?|discovery)\b/i,
-  pain: /^(pain|severity|impact|urgency)\b/i,
-  scope: /^(scope|in scope|out of scope|non-?goals?|goals?|objectives?)\b/i,
-  metrics: /^(success|metrics?|kpis?|okrs?|measure)/i,
-  criteria: /^(acceptance|criteria|definition of done)/i,
-  risks: /^(risks?|assumptions?|mitigations?)\b/i,
-  edge: /^(edge|error|failure|corner)/i,
-  deps: /^(dependenc|integrations?|prerequisites?|blockers?)/i,
-  priority: /^(priorit|roadmap|phases?|milestones?)/i,
-  experiment: /^(experiment|a\/b|test plan|pilot|rollout|launch plan)/i,
+  problem: /\b(problem|background|context|motivation|overview|why)\b/i,
+  user: /\b(users?|personas?|audience|target|who)\b/i,
+  evidence: /\b(evidence|research|insights?|discovery)\b/i,
+  pain: /\b(pain|severity|impact|urgency)\b/i,
+  scope: /\b(scope|non-?goals?|goals?|objectives?)\b/i,
+  metrics: /\b(success|metrics?|kpis?|okrs?|measures?)\b/i,
+  criteria: /\b(acceptance|criteria|definition of done)\b/i,
+  risks: /\b(risks?|assumptions?|mitigations?)\b/i,
+  edge: /\b(edge|errors?|failures?|corner)\b/i,
+  deps: /\b(dependenc\w*|integrations?|prerequisites?|blockers?)\b/i,
+  priority: /\b(priorit\w*|roadmap|phases?|milestones?|must[- ]have|should[- ]have|could[- ]have|later)\b/i,
+  experiment: /\b(experiments?|a\/b|test plan|pilot|rollout|launch plan|validation)\b/i,
 };
 
 /** Where a section *would* apply, used to pick the nearest sentence when nothing matches. */
 const TOPIC_RE: Record<CategoryId, RegExp> = {
   problem: /\b(problem|issue|struggl\w+|slow|manual|hard|can't|cannot|pain|today|currently)\b/i,
   user: /\b(users?|customers?|managers?|teams?|people|admins?|buyers?)\b/i,
-  evidence: /\b(users?|customers?|said|feedback|requests?|asked|saw|data)\b/i,
+  evidence: /(?!)/, // nothing counts as nearby evidence: report "no mention found" rather than quoting an unrelated line
   pain: /\b(slow|manual|every|often|hours?|time|costly|hard)\b/i,
   scope: /\b(add|build|include|feature|let|allow|enable|should|will)\b/i,
   metrics: /\b(improve|increase|reduce|better|faster|grow|goal|success)\b/i,
@@ -330,6 +332,8 @@ const TOPIC_RE: Record<CategoryId, RegExp> = {
   experiment: /\b(launch|release|rollout|users?|improve|increase|expect|believe)\b/i,
 };
 
+const CONTEXT_CATS = new Set<CategoryId>(["problem", "user", "evidence", "pain"]);
+const SOLUTION_CATS = new Set<CategoryId>(["scope", "metrics", "criteria", "risks", "edge", "deps", "priority", "experiment"]);
 const BONUS_NUMBERS = new Set<CategoryId>(["scope", "priority", "risks", "deps", "edge", "criteria"]);
 const BONUS_OWNER = new Set<CategoryId>(["deps", "risks", "experiment", "criteria", "priority"]);
 
@@ -391,12 +395,45 @@ interface Section {
   level: number; // 0 for "Label:" style
 }
 
+/** Strips markdown and leading numbering: "## 10. Success Metrics" and "**6.2 Risks**" both become the plain title. */
+const cleanTitle = (t: string) =>
+  t.replace(/[*_`]/g, "").replace(/:$/, "").replace(/^(?:\d+(?:\.\d+)*[.):]?|[A-Z][.)])\s+/, "").trim();
+
+const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
+const isKnownTitle = (t: string) => wordCount(t) <= 6 && RUBRICS.some((rb) => SECTION_RE[rb.id].test(t));
+const catOf = (t: string) => RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
+
 /** A short standalone line such as "Risks" or "Success metrics": how most Word and PDF documents mark sections. */
 const isBareHeading = (l: string) =>
-  l.length <= 40 && l.split(/\s+/).length <= 4 && !/[.!?,;:]$/.test(l) && RUBRICS.some((rb) => SECTION_RE[rb.id].test(l));
+  !/^[-*•]\s/.test(l) && l.length <= 48 && wordCount(l) <= 5 && !/[.!?,;:]$/.test(l) && isKnownTitle(cleanTitle(l));
 
 const isHeadingLine = (l: string) =>
-  /^#{1,6}\s+\S/.test(l) || /^\*\*[^*]{2,60}\*\*:?$/.test(l) || /^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l) || isBareHeading(l);
+  /^#{1,6}\s+\S/.test(l) ||
+  /^\*\*[^*]{2,60}\*\*:?$/.test(l) ||
+  (/^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l) && wordCount(l) <= 6) ||
+  isBareHeading(l);
+
+type LineClass = { kind: "text" } | { kind: "section"; title: string; rest: string; level: number };
+
+/**
+ * One place that decides what a line is. A "Label: text" line starts a section only when it looks like a
+ * real label (at most 5 words). Inside a markdown heading, only labels we recognise (Risks:, Acceptance criteria:)
+ * start a section; sentences like "The initial product will not attempt to:" stay part of their parent section.
+ */
+function classifyLine(line: string, openLevel: number | null): LineClass {
+  let m: RegExpMatchArray | null;
+  if ((m = line.match(/^(#{1,6})\s+(.+?)\s*#*$/))) return { kind: "section", title: cleanTitle(m[2]), rest: "", level: m[1].length };
+  let title: string | null = null;
+  let rest = "";
+  if ((m = line.match(/^\*\*(.{2,60}?)\*\*:?\s*(.*)$/))) { title = cleanTitle(m[1]); rest = m[2] ?? ""; }
+  else if ((m = line.match(/^([A-Z][A-Za-z0-9 /&'-]{1,40}):\s*(.*)$/)) && wordCount(m[1]) <= 5) { title = cleanTitle(m[1]); rest = m[2]; }
+  if (title !== null) {
+    if (isKnownTitle(title) || openLevel === null || openLevel === 0) return { kind: "section", title, rest, level: 0 };
+    return { kind: "text" };
+  }
+  if (isBareHeading(line)) return { kind: "section", title: cleanTitle(line), rest: "", level: 1 };
+  return { kind: "text" };
+}
 
 function isPlaceholderLine(line: string): boolean {
   const l = line.replace(/^\s*([-*•]|\d+[.)])\s*/, "").replace(/\*\*/g, "");
@@ -407,27 +444,17 @@ function isPlaceholderLine(line: string): boolean {
 function parseSections(lines: string[]): Section[] {
   const out: Section[] = [];
   let cur: Section | null = null;
-  const push = () => { if (cur) out.push(cur); };
   for (const raw of lines) {
     const line = raw.trim();
-    let m: RegExpMatchArray | null;
-    if ((m = line.match(/^(#{1,6})\s+(.+?)\s*#*$/))) {
-      push();
-      cur = { title: m[2].replace(/[*_]/g, "").replace(/:$/, "").trim(), body: "", level: m[1].length };
-    } else if ((m = line.match(/^\*\*(.{2,50}?)\*\*:?\s*(.*)$/))) {
-      push();
-      cur = { title: m[1].replace(/:$/, "").trim(), body: m[2] ?? "", level: 0 };
-    } else if ((m = line.match(/^([A-Z][A-Za-z0-9 /&'-]{1,40}):\s*(.*)$/))) {
-      push();
-      cur = { title: m[1].trim(), body: m[2], level: 0 };
-    } else if (isBareHeading(line)) {
-      push();
-      cur = { title: line, body: "", level: 1 };
+    const c = classifyLine(line, cur ? cur.level : null);
+    if (c.kind === "section") {
+      if (cur) out.push(cur);
+      cur = { title: c.title, body: c.rest, level: c.level };
     } else if (cur && line) {
       cur.body += (cur.body ? "\n" : "") + line;
     }
   }
-  push();
+  if (cur) out.push(cur);
   return out;
 }
 
@@ -435,8 +462,12 @@ function sectionState(sections: Section[], i: number): "filled" | "placeholder" 
   const s = sections[i];
   const flat = s.body.replace(/^[\s>*\-•\d.)]+/gm, "").replace(/\s+/g, " ").trim();
   if (!flat) {
-    const next = sections[i + 1];
-    return s.level > 0 && next && next.level > s.level ? "filled" : "placeholder";
+    // A heading whose content is organised under sub-headings or bold sub-labels is not empty.
+    if (s.level > 0) {
+      const child = sections[i + 1];
+      if (child && !(child.level > 0 && child.level <= s.level)) return "filled";
+    }
+    return "placeholder";
   }
   if (PLACEHOLDER.test(flat)) return "placeholder";
   return flat.split(" ").length >= 3 || /\d/.test(flat) ? "filled" : "placeholder";
@@ -471,13 +502,21 @@ export function analyzePRD(input: string): AnalysisResult {
   // 2. A sentence earns credit in at most 3 categories: the section it sits in, then its best matches.
   const owner = new Map<string, number>();
   let cur = -1;
+  let base = 0; // heading level that set `cur`; deeper sub-headings with unknown titles inherit it
+  let openLevel: number | null = null;
   for (const l0 of lines) {
     const l = l0.trim();
-    const head = l.match(/^#{1,6}\s+(.+?)\s*#*$/)?.[1] ?? l.match(/^\*\*(.{2,50}?)\*\*/)?.[1] ?? l.match(/^([A-Z][A-Za-z0-9 \/&'-]{1,40}):/)?.[1];
-    if (isBareHeading(l)) cur = RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(l));
-    else if (head !== undefined && (isHeadingLine(l) || /^[A-Z][A-Za-z0-9 \/&'-]{1,40}:\s*\S/.test(l) || /^\*\*/.test(l))) {
-      const t = head.replace(/[*_:]/g, "").trim();
-      cur = RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
+    const c = classifyLine(l, openLevel);
+    if (c.kind === "section") {
+      const cat = catOf(c.title);
+      if (cat >= 0) {
+        // A deeper known heading inside a known parent switches category but keeps the parent's level,
+        // so later unknown sibling sub-headings still inherit from the parent section.
+        if (!(base > 0 && c.level > base && cur >= 0)) base = c.level;
+        cur = cat;
+      }
+      else if (!(c.level > 0 && base > 0 && c.level > base && cur >= 0)) { cur = -1; base = 0; }
+      openLevel = c.level;
     }
     if (cur >= 0 && l && !isHeadingLine(l) && !isPlaceholderLine(l)) splitUnits(l).forEach((u) => owner.set(u, cur));
   }
@@ -493,7 +532,11 @@ export function analyzePRD(input: string): AnalysisResult {
   );
   const allowed = new Set<string>();
   credit.forEach((m, u) => {
-    [...m.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).forEach(([ci]) => allowed.add(`${ci}|${u}`));
+    const ow = owner.get(u);
+    const owCat = ow !== undefined && ow >= 0 ? RUBRICS[ow].id : null;
+    // Words in "Success metrics" or "Risks" (e.g. retention, conversion) cannot prove the problem, user, evidence or pain.
+    const eligible = [...m.entries()].filter(([ci]) => !(CONTEXT_CATS.has(RUBRICS[ci].id) && owCat && SOLUTION_CATS.has(owCat) && ow !== ci));
+    eligible.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).forEach(([ci]) => allowed.add(`${ci}|${u}`));
   });
 
   // 3. Score each category.
@@ -507,7 +550,8 @@ export function analyzePRD(input: string): AnalysisResult {
 
     raw[ci].forEach(({ sg, units: us, textHit }) => {
       const ok = us.filter((u) => allowed.has(`${ci}|${u}`));
-      if (textHit || ok.length > 0 || (sg.section && secState === "filled")) {
+      const gateOk = !sg.gated || score > 0;
+      if (gateOk && (textHit || ok.length > 0 || (sg.section && secState === "filled"))) {
         score += sg.weight;
         found.push(sg.label);
         ok.forEach((u) => cands.push({ u, w: sg.weight }));
@@ -520,15 +564,20 @@ export function analyzePRD(input: string): AnalysisResult {
 
     // Reward specifics: numbers and named owners.
     if (BONUS_NUMBERS.has(rb.id) && cands.some((c) => /\d/.test(c.u))) { score += 10; found.push("specific numbers"); }
-    if (BONUS_OWNER.has(rb.id) && cands.some((c) => /\b(owner|DRI|owned by|assigned to|responsible)\b|@\w+/i.test(c.u))) {
+    if (BONUS_OWNER.has(rb.id) && cands.some((c) => /\bowner:\s*\S|\bDRI\b|\bowned by\b|\bassigned to\b|@\w+/i.test(c.u))) {
       score += 10;
       found.push("a named owner");
     }
 
     // Penalise vague wording and placeholder sections.
+    // Vague wording only counts where it affects this category: inside its own section, or anywhere if it has none.
+    const scoped = (re: RegExp) => {
+      const hits = matches(units, re);
+      return hits.find((u) => owner.get(u) === ci) ?? (secIdx < 0 ? hits.find((u) => !owner.has(u)) : undefined) ?? null;
+    };
     let vagueUnit: string | null = null;
-    if (rb.id === "metrics" || rb.id === "criteria") vagueUnit = matches(units, VAGUE)[0] ?? null;
-    else if (rb.id === "user") vagueUnit = matches(units, GENERIC_USER)[0] ?? null;
+    if (rb.id === "metrics" || rb.id === "criteria") vagueUnit = scoped(VAGUE);
+    else if (rb.id === "user") vagueUnit = scoped(GENERIC_USER);
     if (vagueUnit) score -= 15;
 
     let emptyText: string | null = null;
@@ -540,7 +589,10 @@ export function analyzePRD(input: string): AnalysisResult {
     }
 
     score = Math.max(0, Math.min(100, score));
-    cands.sort((a, b) => b.w - a.w);
+    // Prefer real sentences from the category's own section; avoid lead-ins ("...:"), table rows and one-word fragments.
+    const rank = (c: { u: string; w: number }) =>
+      c.w + (owner.get(c.u) === ci ? 1000 : 0) - (c.u.endsWith(":") ? 500 : 0) - (c.u.startsWith("|") ? 300 : 0) + Math.min(12, wordCount(c.u)) / 2;
+    cands.sort((a, b) => rank(b) - rank(a));
     return { rb, score, found, missing, cands, vagueUnit, emptyText };
   });
 

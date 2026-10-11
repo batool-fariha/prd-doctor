@@ -65,6 +65,10 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 - **Dark mode:** deep violet theme, follows the system setting on first visit, toggle in the header, remembered per device. Print stays light.
 - **Charm:** cursor-follow glow on cards and a gentle tilt on the home sample card (off for touch and reduced-motion).
 
+## Tuning the scoring
+
+`node --experimental-strip-types scripts/score-check.mts [path/to/prd.md ...]` runs the regression samples (each with the range a careful reviewer would accept) and prints a per-category breakdown for any PRD you pass in, so confidential documents never need to enter the repo. Run it after every change to `lib/analyzer.ts`.
+
 ## Launch hardening
 
 - **Engine fuzzed:** 18 hostile inputs (empty, 60k chars, nested markdown, RTL and emoji text, null bytes, pathological repeats) run without errors; worst case 40 ms on ~190k characters.
