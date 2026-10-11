@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
+import { Footer } from "@/components/footer";
 import { Ambient } from "@/components/ambient";
 import { AnalyticsProvider } from "@/components/analytics-provider";
 
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><Ambient /><AnalyticsProvider>{children}</AnalyticsProvider></body>
+      <body className="min-h-full flex flex-col"><Ambient /><AnalyticsProvider>{children}<Footer /></AnalyticsProvider></body>
     </html>
   );
 }
