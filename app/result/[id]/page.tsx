@@ -11,13 +11,13 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const { id } = await params;
   const s = (await searchParams).s;
   const payload = decodePayload(typeof s === "string" ? s : null);
-  if (!payload) return { title: "PRD Doctor result" };
+  if (!payload) return { title: { absolute: "PRD Doctor result" } };
   const pv = (await searchParams).p;
   const img = `/api/og?s=${s}&id=${encodeURIComponent(id)}${typeof pv === "string" ? `&p=${pv}` : ""}`;
   const prev = decodePrev(typeof pv === "string" ? pv : null);
   const title = prev ? `My PRD went from ${prev.o} to ${payload.o} on PRD Doctor` : `My PRD scored ${payload.o}/100 on PRD Doctor`;
   return {
-    title,
+    title: { absolute: title },
     openGraph: { title, images: [img] },
     twitter: { card: "summary_large_image", title, images: [img] },
   };

@@ -65,6 +65,17 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 - **Dark mode:** deep violet theme, follows the system setting on first visit, toggle in the header, remembered per device. Print stays light.
 - **Charm:** cursor-follow glow on cards and a gentle tilt on the home sample card (off for touch and reduced-motion).
 
+## Launch hardening
+
+- **Engine fuzzed:** 18 hostile inputs (empty, 60k chars, nested markdown, RTL and emoji text, null bytes, pathological repeats) run without errors; worst case 40 ms on ~190k characters.
+- **Failure-proof storage and copy:** if `localStorage` is blocked or full, results still open for the session; if the clipboard API is blocked, copy falls back to the legacy path, then to a prompt.
+- **Phones and in-app browsers:** the share card opens as a long-press preview where downloads are blocked; 16px textarea (no iOS zoom); 40px tap targets; no horizontal scroll.
+- **Sharing:** post to LinkedIn or X from the result, with a short public link (`/r/<code>`) and a card that always prints the public address.
+- **Trust:** a "How scoring works" page generated from the live rubric, so weights and checks can't drift from the code.
+- **Accessibility:** all text pairs checked against WCAG AA in light and dark mode, visible keyboard focus, one `h1` per page, labelled icon buttons, reduced-motion support.
+- **Discoverability and safety:** link-preview metadata, `robots.txt` (private result URLs excluded), sitemap, theme colour, and security headers (nosniff, frame, referrer and permissions policies).
+- **Double-submit guard:** repeated clicks or shortcuts create one report.
+
 ## Architecture
 
 ```

@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { SITE } from "@/lib/site";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Footer } from "@/components/footer";
@@ -21,9 +22,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description = "Paste or upload a PRD and get a 0-100 score across 12 categories, with fixes that quote your own words. Free, private, no account.";
+
 export const metadata: Metadata = {
-  title: "PRD Doctor: score your product requirements doc",
-  description: "Paste a PRD, get a 0-100 score across 12 categories with quoted, specific fixes.",
+  metadataBase: new URL(SITE.url),
+  title: { default: "PRD Doctor: score your product requirements doc", template: "%s | PRD Doctor" },
+  description,
+  applicationName: SITE.name,
+  authors: [{ name: SITE.author, url: SITE.linkedin }],
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", siteName: SITE.name, title: "PRD Doctor: is your PRD ready for review?", description, url: SITE.url },
+  twitter: { card: "summary_large_image", title: "PRD Doctor: is your PRD ready for review?", description },
+};
+
+export const viewport: Viewport = {
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#FBFAFE" }, { media: "(prefers-color-scheme: dark)", color: "#0E0B1C" }],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

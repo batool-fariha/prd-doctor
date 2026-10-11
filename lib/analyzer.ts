@@ -287,6 +287,9 @@ const GENERIC_USER = /\b(everyone|everybody|all users|any user|anyone|all custom
 const PLACEHOLDER =
   /^(none|n\/?a|na|nil|nothing|tbd|tba|todo|wip|unknown|to be (decided|determined|defined|confirmed)|not applicable|\?+|-+|…|\.{2,})[.!]*$/i;
 
+/** Public description of the rubric (labels and weights only), used by the "How scoring works" page. */
+export const RUBRIC_SUMMARY = RUBRICS.map((r) => ({ id: r.id, label: r.label, weight: r.weight, why: r.why, signals: r.signals.map((sg) => ({ label: sg.label, weight: sg.weight })) }));
+
 // A signal flagged `section` also counts when the matching section is present and filled.
 RUBRICS.forEach((rb) => {
   rb.signals[0].section = true;

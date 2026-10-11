@@ -29,6 +29,7 @@ const delay = (i: number) => ({ "--i": i }) as React.CSSProperties;
 export default function Home() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const submitting = useRef(false);
   const [typed, setTyped] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -40,6 +41,7 @@ export default function Home() {
   const draft = useSyncExternalStore(subscribe, readDraft, () => "");
   const histRaw = useSyncExternalStore(subscribe, readHistoryRaw, () => "");
   const history = useMemo(() => parseHistory(histRaw), [histRaw]);
+  const mod = useSyncExternalStore(() => () => {}, () => (/Mac|iPhone|iPad/i.test(navigator.platform) ? "⌘" : "Ctrl"), () => "⌘");
   const text = typed ?? draft;
   const words = countWords(text);
 
@@ -47,8 +49,10 @@ export default function Home() {
   function reset() { set(""); setSource(null); }
 
   function analyze() {
+    if (submitting.current || busy) return; // ignore double clicks and repeated shortcuts (state updates are too late for that)
     const problem = validatePRD(text);
     if (problem) { setError(problem); return; }
+    submitting.current = true;
     const t0 = performance.now();
     track("analysis_started", { words, chars: text.length });
     const result = analyzePRD(text);
@@ -160,7 +164,7 @@ export default function Home() {
               onChange={(e) => { set(e.target.value); if (source) setSource(null); }}
               onPaste={onPaste}
               onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") analyze(); }}
-              className="bare min-h-[380px] resize-y rounded-none border-0 bg-transparent p-6 text-[15px] leading-relaxed shadow-none"
+              className="bare min-h-[380px] resize-y rounded-none border-0 bg-transparent p-6 text-base leading-relaxed shadow-none md:text-[15px]"
               aria-label="PRD text"
               aria-invalid={Boolean(error)}
             />
@@ -196,7 +200,7 @@ export default function Home() {
             <WordMeter words={words} />
             <div className="flex items-center gap-3">
               <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
-                <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">⌘</kbd>
+                <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">{mod}</kbd>
                 <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
               </span>
               <button type="button" onClick={analyze} disabled={Boolean(busy)} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium disabled:opacity-60">

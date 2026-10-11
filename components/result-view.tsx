@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Copy, Download, File, Minus, Pencil, Plus, Printer, Share } from "@/components/icons";
+import { ArrowRight, Check, Copy, Download, File, Linkedin, Minus, Pencil, Plus, Printer, Share, XLogo } from "@/components/icons";
 import { CATEGORY_ORDER, decodePayload, encodePayload, encodePrev, encodeShort, grade, shareMetrics, statusTone, toSharePayload, type AnalysisResult, type CategoryResult, type PrevPayload, type SharePayload } from "@/lib/analyzer";
 import { clearDraft, parseDone, parseHistory, readDone, readHistoryRaw, readRaw, setDraft, subscribe, toggleDone } from "@/lib/storage";
+import { copyText } from "@/lib/clipboard";
 import { downloadText, fixMarkdown, reportMarkdown } from "@/lib/report";
 import { track } from "@/lib/analytics";
 import { Burst } from "./burst";
@@ -74,6 +75,7 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 pb-24">
+      <h1 className="sr-only">PRD Doctor result: {payload.o} out of 100, {g.label}</h1>
       <header className="no-print sticky top-0 z-20 -mx-6 flex items-center justify-between gap-4 border-b bg-background/70 px-6 py-3.5 backdrop-blur-md">
         <Link href="/" className="serif flex items-center gap-2.5 text-xl"><LogoMark />PRD Doctor</Link>
         <div aria-hidden={!mini} className={`flex min-w-0 items-center gap-2.5 transition-all duration-300 ${mini ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}>
@@ -112,6 +114,10 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
               ))}
             </dl>
             <ShareControls payload={payload} id={id} prev={delta !== null && delta > 0 ? prev : null} />
+            <p className="no-print mt-5 max-w-md text-xs leading-relaxed text-ink3">
+              This score checks structure and specifics, not whether the idea is good.{" "}
+              <Link href="/how-scoring-works" className="underline underline-offset-4 hover:text-foreground">How scoring works</Link>
+            </p>
           </div>
           <RadarChart scores={payload.c} active={active} onActive={setActive} onSelect={result ? select : undefined} />
         </div>
@@ -226,36 +232,60 @@ type CardMode = "score" | "progress";
 function ShareControls({ payload, id, prev }: { payload: SharePayload; id: string; prev: PrevPayload | null }) {
   const [copied, flash] = useFlash();
   const [mode, setMode] = useState<CardMode>("score");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [problem, setProblem] = useState("");
   const progress = Boolean(prev) && mode === "progress";
+  const kind = progress ? "progress" : "score";
   const q = `s=${encodePayload(payload)}${progress && prev ? `&p=${encodePrev(prev)}` : ""}`;
   // Plain score: short public link. Before and after: long link carrying the previous scores too.
   const url = () => (progress ? `${window.location.origin}/result/${id}?${q}` : `${window.location.origin}/r/${encodeShort(payload)}`);
   const text = progress && prev ? `My PRD went from ${prev.o} to ${payload.o} on PRD Doctor` : `My PRD scored ${payload.o}/100 on PRD Doctor`;
 
   async function share() {
+    setProblem("");
     const method = typeof navigator.share === "function" ? "native" : "copy";
-    track("share_clicked", { score: payload.o, method, kind: progress ? "progress" : "score" });
+    track("share_clicked", { score: payload.o, method, kind });
     const u = url();
     if (typeof navigator.share === "function") {
       try { await navigator.share({ title: text, text, url: u }); return; } catch { /* cancelled */ }
     }
-    try { await navigator.clipboard.writeText(`${text}\n${u}`); flash(); } catch {}
+    if (await copyText(`${text}\n${u}`)) flash();
+    else window.prompt("Copy this link", u);
+  }
+
+  function post(network: "linkedin" | "x") {
+    track("share_clicked", { score: payload.o, method: network, kind });
+    const u = encodeURIComponent(url());
+    const href = network === "linkedin"
+      ? `https://www.linkedin.com/sharing/share-offsite/?url=${u}`
+      : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${u}`;
+    window.open(href, "_blank", "noopener,noreferrer");
   }
 
   async function download() {
-    track("share_clicked", { score: payload.o, method: "download", kind: progress ? "progress" : "score" });
-    const res = await fetch(`/api/og?${q}&id=${id}`);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(await res.blob());
-    a.download = progress ? `prd-progress-${prev?.o}-to-${payload.o}.png` : `prd-score-${payload.o}.png`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    setProblem("");
+    track("share_clicked", { score: payload.o, method: "download", kind });
+    try {
+      const res = await fetch(`/api/og?${q}`);
+      if (!res.ok) throw new Error("card failed");
+      const href = URL.createObjectURL(await res.blob());
+      // Phones and in-app browsers (LinkedIn, Instagram) often block file downloads: show the image to long-press instead.
+      if (window.matchMedia("(hover: none)").matches) { setPreview(href); return; }
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = progress ? `prd-progress-${prev?.o}-to-${payload.o}.png` : `prd-score-${payload.o}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(href), 4000);
+    } catch {
+      setProblem("Couldn't create the card. Check your connection and try again.");
+    }
   }
 
+  const round = "btn-line grid size-10 place-items-center text-ink2 hover:text-foreground";
   return (
     <div className="no-print mt-8">
       {prev && (
-        <div role="group" aria-label="Share card style" className="mb-3 inline-flex rounded-lg border bg-surface/70 p-0.5 text-xs">
+        <div role="group" aria-label="Share card style" className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border bg-surface/70 p-0.5 text-xs">
           {(["score", "progress"] as const).map((m) => (
             <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)} className={`rounded-md px-3 py-1.5 transition-colors ${mode === m ? "bg-primary text-primary-foreground" : "text-ink2 hover:text-foreground"}`}>
               {m === "score" ? "My score" : `Before and after (${prev.o} to ${payload.o})`}
@@ -263,12 +293,27 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
           ))}
         </div>
       )}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button onClick={share} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
           {copied ? <Check /> : <Share />}{copied ? "Link copied" : progress ? "Share my progress" : "Share my PRD score"}
         </button>
         <button onClick={download} className="btn-line inline-flex h-10 items-center gap-2 px-4 text-sm"><Download />Download card</button>
+        <span className="flex items-center gap-2">
+          <button onClick={() => post("linkedin")} className={round} aria-label="Post on LinkedIn" title="Post on LinkedIn"><Linkedin className="size-[18px]" /></button>
+          <button onClick={() => post("x")} className={round} aria-label="Post on X" title="Post on X"><XLogo className="size-[16px]" /></button>
+        </span>
       </div>
+      {problem && <p role="alert" className="mt-3 text-sm text-danger">{problem}</p>}
+      {preview && (
+        <div role="dialog" aria-modal="true" aria-label="Share card" className="fixed inset-0 z-50 grid place-items-center bg-background/90 p-5 backdrop-blur-md" onClick={() => setPreview(null)}>
+          <div className="w-full max-w-lg text-center" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt={`PRD Doctor share card, score ${payload.o} out of 100`} className="w-full rounded-xl border" />
+            <p className="mt-3 text-sm text-ink2">Press and hold the image to save it, then add it to your post.</p>
+            <button onClick={() => setPreview(null)} className="btn-solid mt-4 inline-flex h-10 items-center px-6 text-sm font-medium">Done</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -285,7 +330,7 @@ function Toolbar({ result }: { result: AnalysisResult }) {
   return (
     <div className="no-print rise mb-10 flex flex-wrap gap-2" style={delay(2)}>
       {result.text && <button className={btn} onClick={rescore}><Pencil />Edit and re-score</button>}
-      <button className={btn} onClick={async () => { await navigator.clipboard.writeText(reportMarkdown(result)); flash(); }}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy as Markdown"}</button>
+      <button className={btn} onClick={async () => { if (await copyText(reportMarkdown(result))) flash(); }}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy as Markdown"}</button>
       <button className={btn} onClick={() => downloadText(`prd-report-${result.overall}.md`, reportMarkdown(result))}><File />Download .md</button>
       <button className={btn} onClick={() => { document.querySelectorAll("details").forEach((d) => (d.open = true)); setTimeout(() => window.print(), 60); }}><Printer />Print or save PDF</button>
     </div>
@@ -393,7 +438,7 @@ function Fix({ c, open, addressed, resultId }: { c: CategoryResult; open: boolea
         <Row k="What to add">{c.add}</Row>
         <Row k="Question"><span className="serif text-lg text-foreground">{c.question}</span></Row>
         <div className="no-print flex flex-wrap gap-2 md:col-start-2">
-          <button className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={async () => { await navigator.clipboard.writeText(fixMarkdown(c)); flash(); }}>
+          <button className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={async () => { if (await copyText(fixMarkdown(c))) flash(); }}>
             {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy this fix"}
           </button>
           <button className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={() => toggleDone(resultId, c.id)}>
@@ -415,7 +460,7 @@ function Rewrite({ text }: { text: string }) {
     <Section title="Suggested rewrite">
       <div className="rounded-xl border bg-surface2/80 p-6">
         <div className="no-print mb-4 flex justify-end">
-          <button onClick={async () => { await navigator.clipboard.writeText(text); flash(); }} className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs">
+          <button onClick={async () => { if (await copyText(text)) flash(); }} className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs">
             {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy"}
           </button>
         </div>

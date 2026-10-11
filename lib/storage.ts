@@ -15,6 +15,9 @@ export function subscribe(cb: () => void) {
   return () => { listeners.delete(cb); window.removeEventListener("storage", cb); };
 }
 
+/** If localStorage is blocked or full (some private modes and in-app browsers), results still work for this tab. */
+const memory = new Map<string, string>();
+
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 
 function readHistory(): HistoryItem[] {
@@ -23,6 +26,7 @@ function readHistory(): HistoryItem[] {
 
 /** Saves the result, links it to the previous run of the same PRD (same title), and updates history. */
 export function saveResult(r: AnalysisResult) {
+  memory.set(key(r.id), JSON.stringify(r));
   try {
     const hist = readHistory();
     const prev = hist.find((h) => h.title === r.title);
@@ -38,7 +42,7 @@ export function saveResult(r: AnalysisResult) {
   notify();
 }
 
-export const readRaw = (id: string) => get(key(id));
+export const readRaw = (id: string) => get(key(id)) ?? memory.get(key(id)) ?? null;
 export const readHistoryRaw = () => get(HKEY) ?? "";
 export const readDraft = () => get(DKEY) ?? "";
 export const parseHistory = (raw: string): HistoryItem[] => { try { const a = JSON.parse(raw || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } };

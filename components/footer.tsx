@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Code, Github, Linkedin } from "./icons";
 import { LogoMark } from "./logo";
 import { SITE } from "@/lib/site";
@@ -14,6 +15,7 @@ export function Footer() {
             Designed and built by <a href={SITE.linkedin} target="_blank" rel="noopener noreferrer" className="underline decoration-[#C9B8FF] underline-offset-4 hover:decoration-[#6D4AFF]">{SITE.author}</a>.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">Free, no account. Your PRD never leaves your browser.</p>
+          <Link href="/how-scoring-works" className="-mb-2 mt-1 inline-flex min-h-10 items-center text-sm text-ink2 underline decoration-[#C9B8FF] underline-offset-4 hover:decoration-[#6D4AFF]">How scoring works</Link>
         </div>
         <nav aria-label="Author links" className="flex items-center gap-2">
           <a href={SITE.github} target="_blank" rel="noopener noreferrer" className={link} aria-label="Fariha Batool on GitHub" title="GitHub"><Github className="size-[18px]" /></a>
