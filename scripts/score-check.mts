@@ -3,7 +3,7 @@
  * Each sample has the overall range a careful reviewer would accept. Add real PRDs here as you tune
  * (keep confidential ones out of the repo: pass a file path as an extra argument to see its breakdown).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { analyzePRD } from "../lib/analyzer.ts";
 
 const SAMPLES: { name: string; text: string; overall: [number, number]; expect?: Record<string, [number, number]> }[] = [
@@ -77,6 +77,19 @@ for (const s of SAMPLES) {
   console.log(`\n${s.name}`);
   check("overall", r.overall, s.overall);
   for (const [id, range] of Object.entries(s.expect ?? {})) check(id, r.categories.find((c) => c.id === id)!.score, range);
+}
+
+// Private calibration set: scripts/private/<name>.expect-<score>.md (git-ignored; may hold confidential real PRDs).
+// Each is checked against the overall score the author gave it, within +/- TOLERANCE.
+const TOLERANCE = 5;
+const privateDir = new URL("./private/", import.meta.url);
+if (existsSync(privateDir)) {
+  console.log("\nreal PRDs (author's own score)");
+  for (const f of readdirSync(privateDir).filter((n) => /\.expect-\d+\.(md|txt)$/.test(n))) {
+    const expected = Number(f.match(/\.expect-(\d+)\./)![1]);
+    const r = analyzePRD(readFileSync(new URL(f, privateDir), "utf8"));
+    check(f.replace(/\.expect-\d+\.(md|txt)$/, ""), r.overall, [expected - TOLERANCE, expected + TOLERANCE]);
+  }
 }
 
 // Optional: breakdown for any file you pass in, e.g. a confidential PRD you don't want in the repo.
