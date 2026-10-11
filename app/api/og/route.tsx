@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { SITE } from "@/lib/site";
 import { CATEGORY_ORDER, decodePayload, decodePrev, encodeShort, grade, shareMetrics } from "@/lib/analyzer";
 
 function headline(score: number, best: string, worst: string) {
@@ -9,7 +10,7 @@ function headline(score: number, best: string, worst: string) {
 }
 
 export async function GET(req: Request) {
-  const { searchParams, origin } = new URL(req.url);
+  const { searchParams } = new URL(req.url);
   const p = decodePayload(searchParams.get("s"));
   if (!p) return new Response("Bad payload", { status: 400 });
   const prev = decodePrev(searchParams.get("p"));
@@ -19,7 +20,8 @@ export async function GET(req: Request) {
   const rows = CATEGORY_ORDER.map((m, i) => ({ label: m.label, score: p.c[i] }));
   const best = [...rows].sort((a, b) => b.score - a.score)[0].label;
   const worst = [...rows].sort((a, b) => a.score - b.score)[0].label;
-  const link = origin.replace(/^https?:\/\//, "") + "/r/" + encodeShort(p); // opens the shared score anywhere
+  // Always print the public address, never localhost or a preview URL, so a shared card is usable.
+  const link = new URL(SITE.url).host + "/r/" + encodeShort(p);
 
   const S = 380, c = S / 2, R = 150, n = rows.length;
   const pt = (i: number, r: number) => {
