@@ -56,7 +56,7 @@ export interface AnalysisResult {
   title: string;
   /** Normalised PRD text, kept only in the browser so the user can edit and re-score. */
   text?: string;
-  prev?: { id: string; overall: number; createdAt: number };
+  prev?: { id: string; overall: number; createdAt: number; c?: number[] };
 }
 
 interface Signal {
@@ -657,6 +657,26 @@ export function decodePayload(s: string | undefined | null): SharePayload | null
   }
 }
 
+/** Previous run, for the before/after share card. Scores only; `c` is absent for older history entries. */
+export interface PrevPayload { o: number; c?: number[] }
+
+export function encodePrev(p: PrevPayload): string {
+  return btoa(JSON.stringify(p)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodePrev(s: string | undefined | null): PrevPayload | null {
+  if (!s) return null;
+  try {
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const p = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+    if (typeof p?.o !== "number" || p.o < 0 || p.o > 100) return null;
+    const c = Array.isArray(p.c) && p.c.length === CATEGORY_ORDER.length && p.c.every((n: unknown) => typeof n === "number" && n >= 0 && n <= 100) ? (p.c as number[]) : undefined;
+    return { o: p.o, c };
+  } catch {
+    return null;
+  }
+}
+
 /** Three headline metrics for the share card. */
 export function shareMetrics(p: SharePayload) {
   const rows = CATEGORY_ORDER.map((m, i) => ({ label: m.label, score: p.c[i] }));
@@ -670,11 +690,18 @@ export function shareMetrics(p: SharePayload) {
   ];
 }
 
-export function grade(score: number): { label: string; color: string; bg: string } {
-  if (score >= 80) return { label: "Ready for review", color: "#346538", bg: "#EDF3EC" };
-  if (score >= 60) return { label: "Almost there", color: "#346538", bg: "#EDF3EC" };
-  if (score >= 40) return { label: "Needs work", color: "#956400", bg: "#FBF3DB" };
-  return { label: "Early draft", color: "#9F2F2D", bg: "#FDEBEC" };
+export interface Grade { label: string; verdict: string; color: string; bg: string }
+
+/** Tone of voice for each score band. */
+export interface Grade { label: string; verdict: string; color: string; bg: string }
+
+/** Tone of voice for each score band. */
+export function grade(score: number): Grade {
+  if (score >= 85) return { label: "Cleared for review", verdict: "Ready to send. Reviewers should have few questions.", color: "#346538", bg: "#EDF3EC" };
+  if (score >= 70) return { label: "Healthy", verdict: "Reads like a PRD people can build from.", color: "#346538", bg: "#EDF3EC" };
+  if (score >= 50) return { label: "On the mend", verdict: "Solid foundations. Close the top gaps and it is ready.", color: "#1F6C9F", bg: "#E1F3FE" };
+  if (score >= 30) return { label: "Under observation", verdict: "The basics are there. A few gaps will cost you in review.", color: "#956400", bg: "#FBF3DB" };
+  return { label: "Needs bed rest", verdict: "The idea may be good, but the document cannot carry it yet.", color: "#9F2F2D", bg: "#FDEBEC" };
 }
 
 export function statusTone(s: Status): { bg: string; color: string; label: string } {

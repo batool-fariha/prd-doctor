@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { CATEGORY_ORDER, decodePayload, grade, shareMetrics } from "@/lib/analyzer";
+import { CATEGORY_ORDER, decodePayload, decodePrev, grade, shareMetrics } from "@/lib/analyzer";
 
 function headline(score: number, best: string, worst: string) {
   if (score >= 80) return "Ready for review.";
@@ -12,6 +12,8 @@ export async function GET(req: Request) {
   const { searchParams, origin } = new URL(req.url);
   const p = decodePayload(searchParams.get("s"));
   if (!p) return new Response("Bad payload", { status: 400 });
+  const prev = decodePrev(searchParams.get("p"));
+  const delta = prev ? p.o - prev.o : 0;
   const g = grade(p.o);
   const metrics = shareMetrics(p);
   const rows = CATEGORY_ORDER.map((m, i) => ({ label: m.label, score: p.c[i] }));
@@ -26,6 +28,10 @@ export async function GET(req: Request) {
     return [c + r * Math.cos(a), c + r * Math.sin(a)] as const;
   };
   const ring = (l: number) => rows.map((_, i) => pt(i, (R * l) / 100).join(",")).join(" ");
+  const poly = (vals: number[]) => vals.map((v, i) => pt(i, (R * v) / 100).join(",")).join(" ");
+
+  const progressHeadline =
+    delta > 0 ? `Up ${delta} point${delta === 1 ? "" : "s"} since the last draft.` : delta < 0 ? `Down ${-delta} since the last draft.` : "Holding steady since the last draft.";
 
   return new ImageResponse(
     (
@@ -38,19 +44,30 @@ export async function GET(req: Request) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column", maxWidth: 640 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ display: "flex", fontSize: 28, opacity: 0.7 }}>My PRD scored</div>
+              <div style={{ display: "flex", fontSize: 28, opacity: 0.7 }}>{prev ? "My PRD went from" : "My PRD scored"}</div>
               <div style={{ display: "flex", fontSize: 20, padding: "4px 14px", borderRadius: 999, background: g.bg, color: g.color }}>{g.label}</div>
             </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
-              <div style={{ display: "flex", fontSize: 190, fontWeight: 700, lineHeight: 1, color: "#4B2FC9" }}>{p.o}</div>
-              <div style={{ display: "flex", fontSize: 40, opacity: 0.6, paddingBottom: 22 }}>/100</div>
+            {prev ? (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
+                <div style={{ display: "flex", fontSize: 120, fontWeight: 700, lineHeight: 1, color: "#A59CC4", paddingBottom: 18 }}>{prev.o}</div>
+                <div style={{ display: "flex", fontSize: 70, lineHeight: 1, color: "#8E7BD8", paddingBottom: 28 }}>→</div>
+                <div style={{ display: "flex", fontSize: 190, fontWeight: 700, lineHeight: 1, color: "#4B2FC9" }}>{p.o}</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+                <div style={{ display: "flex", fontSize: 190, fontWeight: 700, lineHeight: 1, color: "#4B2FC9" }}>{p.o}</div>
+                <div style={{ display: "flex", fontSize: 40, opacity: 0.6, paddingBottom: 22 }}>/100</div>
+              </div>
+            )}
+            <div style={{ display: "flex", marginTop: 4, fontSize: 34, lineHeight: 1.2, letterSpacing: -0.5 }}>
+              {prev ? progressHeadline : headline(p.o, best, worst)}
             </div>
-            <div style={{ display: "flex", marginTop: 4, fontSize: 34, lineHeight: 1.2, letterSpacing: -0.5 }}>{headline(p.o, best, worst)}</div>
           </div>
           <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
             {[25, 50, 75, 100].map((l) => <polygon key={l} points={ring(l)} fill="none" stroke="#CFC4EE" strokeWidth={1.5} />)}
             {rows.map((_, i) => { const [x, y] = pt(i, R); return <line key={i} x1={c} y1={c} x2={x} y2={y} stroke="#CFC4EE" strokeWidth={1.5} />; })}
-            <polygon points={rows.map((r, i) => pt(i, (R * r.score) / 100).join(",")).join(" ")} fill="rgba(124,92,255,0.25)" stroke="#6D4AFF" strokeWidth={4} strokeLinejoin="round" />
+            {prev?.c && <polygon points={poly(prev.c)} fill="rgba(150,140,180,0.12)" stroke="#9C93BA" strokeWidth={3} strokeDasharray="8 7" strokeLinejoin="round" />}
+            <polygon points={poly(rows.map((r) => r.score))} fill="rgba(124,92,255,0.25)" stroke="#6D4AFF" strokeWidth={4} strokeLinejoin="round" />
             {rows.map((r, i) => { const [x, y] = pt(i, (R * r.score) / 100); return <circle key={i} cx={x} cy={y} r={6} fill="#6D4AFF" stroke="#fff" strokeWidth={2.5} />; })}
           </svg>
         </div>

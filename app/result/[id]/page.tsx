@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { decodePayload } from "@/lib/analyzer";
+import { decodePayload, decodePrev } from "@/lib/analyzer";
 import { ResultView } from "@/components/result-view";
 
 type Props = {
@@ -12,8 +12,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const s = (await searchParams).s;
   const payload = decodePayload(typeof s === "string" ? s : null);
   if (!payload) return { title: "PRD Doctor result" };
-  const img = `/api/og?s=${s}&id=${encodeURIComponent(id)}`;
-  const title = `My PRD scored ${payload.o}/100 on PRD Doctor`;
+  const pv = (await searchParams).p;
+  const img = `/api/og?s=${s}&id=${encodeURIComponent(id)}${typeof pv === "string" ? `&p=${pv}` : ""}`;
+  const prev = decodePrev(typeof pv === "string" ? pv : null);
+  const title = prev ? `My PRD went from ${prev.o} to ${payload.o} on PRD Doctor` : `My PRD scored ${payload.o}/100 on PRD Doctor`;
   return {
     title,
     openGraph: { title, images: [img] },

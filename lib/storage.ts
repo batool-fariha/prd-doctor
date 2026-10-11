@@ -1,10 +1,10 @@
-import type { AnalysisResult } from "./analyzer";
+import { CATEGORY_ORDER, type AnalysisResult } from "./analyzer";
 
 const key = (id: string) => `prd-doctor:result:${id}`;
 const HKEY = "prd-doctor:history";
 const DKEY = "prd-doctor:draft";
 
-export interface HistoryItem { id: string; title: string; overall: number; words: number; createdAt: number }
+export interface HistoryItem { id: string; title: string; overall: number; words: number; createdAt: number; c?: number[] }
 
 // Tiny external store so useSyncExternalStore sees same-tab writes too.
 const listeners = new Set<() => void>();
@@ -26,9 +26,10 @@ export function saveResult(r: AnalysisResult) {
   try {
     const hist = readHistory();
     const prev = hist.find((h) => h.title === r.title);
-    if (prev) r.prev = { id: prev.id, overall: prev.overall, createdAt: prev.createdAt };
+    if (prev) r.prev = { id: prev.id, overall: prev.overall, createdAt: prev.createdAt, c: prev.c };
+    const c = CATEGORY_ORDER.map((m) => r.categories.find((x) => x.id === m.id)!.score);
     localStorage.setItem(key(r.id), JSON.stringify(r));
-    const next: HistoryItem[] = [{ id: r.id, title: r.title, overall: r.overall, words: r.words, createdAt: r.createdAt }, ...hist];
+    const next: HistoryItem[] = [{ id: r.id, title: r.title, overall: r.overall, words: r.words, createdAt: r.createdAt, c }, ...hist];
     next.slice(30).forEach((h) => localStorage.removeItem(key(h.id)));
     localStorage.setItem(HKEY, JSON.stringify(next.slice(0, 30)));
   } catch {
