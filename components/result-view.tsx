@@ -298,8 +298,10 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
           {copied ? <Check /> : <Share />}{copied ? "Link copied" : progress ? "Share my progress" : "Share my PRD score"}
         </button>
         <button onClick={download} className="btn-line inline-flex h-10 items-center gap-2 px-4 text-sm"><Download />Download card</button>
+        <button onClick={() => post("linkedin")} className="btn-line inline-flex h-10 items-center gap-2 px-4 text-sm" aria-label="Post on LinkedIn" title="Post on LinkedIn">
+          <Linkedin className="size-[18px] text-[#0A66C2]" />Post on LinkedIn
+        </button>
         <span className="flex items-center gap-2">
-          <button onClick={() => post("linkedin")} className={round} aria-label="Post on LinkedIn" title="Post on LinkedIn"><Linkedin className="size-[18px]" /></button>
           <button onClick={() => post("x")} className={round} aria-label="Post on X" title="Post on X"><XLogo className="size-[16px]" /></button>
         </span>
       </div>
