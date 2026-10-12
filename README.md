@@ -67,7 +67,7 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 
 ## Tuning the scoring
 
-`node --experimental-strip-types scripts/score-check.mts [path/to/prd.md ...]` runs the regression samples (each with the range a careful reviewer would accept) and prints a per-category breakdown for any PRD you pass in, so confidential documents never need to enter the repo. Run it after every change to `lib/analyzer.ts`.
+`node --experimental-strip-types scripts/score-check.mts [path/to/prd.md ...]` runs the regression samples (each with the range a careful reviewer would accept) and prints a per-category breakdown for any PRD you pass in, so confidential documents never need to enter the repo. Run it after every change to `lib/analyzer.ts`. `scripts/fuzz.mts` checks hostile inputs (huge, empty, emoji, RTL, nested markdown): no crashes, scores stay 0-100, and each run stays fast. Set `VERBOSE=1` to see which checks fired.
 
 ## Launch hardening
 

@@ -71,6 +71,8 @@ interface Signal {
   text?: boolean;
   /** only counts when an earlier signal in the same category already matched */
   gated?: boolean;
+  /** counts when a filled section with a matching title exists (e.g. a "Not doing" list) */
+  sectionTitle?: RegExp;
 }
 
 interface Rubric {
@@ -92,7 +94,7 @@ const RUBRICS: Rubric[] = [
     label: "Problem clarity",
     weight: 12,
     signals: [
-      { label: "an explicit problem statement", weight: 25, test: /\b(problem|pain ?points?|struggl\w+|challenges?|frustrat\w+|difficult\w*|unable|can't|cannot|lack\w*|fail\w*|friction|broken)\b/i },
+      { label: "an explicit problem statement", weight: 25, test: /\b(problem|pain ?points?|painful|annoying|complain\w*|struggl\w+|challenges?|frustrat\w+|difficult\w*|hard to|no way to|unable|can't|cannot|lack\w*|fail\w*|friction|broken|drop-?off|go(es)? unanswered|missed)\b/i },
       { label: "a cause (why the problem exists)", weight: 20, test: /\b(because|due to|as a result|root cause|which (causes|leads)|results? in)\b/i },
       { label: "a Problem / Background / Context section", weight: 20, test: /^\s*(#+\s*|\*\*)?(problem|background|context|overview|motivation|why)\b/im },
       { label: "the situation in which it happens", weight: 15, test: /\b(when|while|during|whenever|every time)\b/i },
@@ -160,7 +162,7 @@ const RUBRICS: Rubric[] = [
     weight: 9,
     signals: [
       { label: "goals or in-scope items", weight: 30, test: /\b(in[- ]scope|scope|goals?|objectives?|will include|must have|MVP|v1|phase 1)\b/i },
-      { label: "non-goals / out-of-scope items", weight: 35, test: /\b(out of scope|non-?goals?|not in scope|not included|won't|will not|excluded|deferred|not (doing|building))\b/i },
+      { label: "non-goals / out-of-scope items", weight: 35, sectionTitle: /\b(non-?goals?|not (doing|building)|out of scope|won'?t)\b/i, test: /\b(out of scope|non-?goals?|not in scope|not included|won't|will not|excluded|deferred|not (doing|building))\b/i },
       { label: "phases, milestones or timeline", weight: 20, test: /\b(phase|milestone|release|sprint|launch|timeline|deadline)\b/i },
       { label: "a structured list of requirements", weight: 15, test: /^\s*([-*•]|\d+[.)])\s+\S/m, min: 3 },
     ],
@@ -177,7 +179,7 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "a named success metric / KPI", weight: 30, test: /\b(success metrics?|KPIs?|OKRs?|north star|key results?|we will measure|measured by)\b/i },
       { label: "a numeric target or baseline", weight: 30, test: /(\b\d+(\.\d+)?\s?%|\b(increase|reduce|decrease|improve|grow|lift|cut)\w*\b[^.\n]{0,40}\bby\b[^.\n]{0,15}\d|\bfrom\b[^.\n]{0,20}\d[^.\n]{0,15}\bto\b[^.\n]{0,10}\d)/i },
-      { label: "a concrete metric (conversion, retention, time-to-X…)", weight: 25, test: /\b(conversion|retention|activation|engagement|NPS|CSAT|DAU|MAU|WAU|churn|time[- ]to|adoption|ARPU|CTR|completion rate|task success|latency)\b/i },
+      { label: "a concrete metric (conversion, retention, time-to-X…)", weight: 25, test: /\b(conversion|retention|activation|engagement|NPS|CSAT|DAU|MAU|WAU|churn|time[- ]to|adoption|ARPU|CTR|(completion|reply|response|error|bounce|success|drop-?off) rate|drop-?off|first response|task success|latency)\b/i },
       { label: "a time frame for hitting it", weight: 15, test: /\b(within|by (end of )?(Q[1-4]|\w+ \d+)|\d+\s*(days|weeks|months)|after launch)\b/i },
     ],
     why: "If you can't say how you'll know it worked, you can't tell a win from a miss, and the launch review turns into opinion.",
@@ -193,8 +195,8 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "Given / When / Then style behaviour", weight: 35, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
       { label: "an Acceptance Criteria section", weight: 25, test: /acceptance criteria|definition of done|\bDoD\b/i },
-      { label: "testable wording (must, only, at least, within…)", weight: 20, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d)\b/i, min: 3 },
-      { label: "a checklist or numbered requirements", weight: 20, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)]))\s*\S/m, min: 2 },
+      { label: "testable wording (must, only, at least, within…)", weight: 20, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|then)\b/i, min: 3 },
+      { label: "a checklist or numbered requirements", weight: 20, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S/im, min: 2 },
     ],
     why: "Acceptance criteria are the contract between PM, design, engineering and QA. Without them, “done” is whatever the loudest person remembers.",
     add: "Write 5-8 pass/fail criteria in Given/When/Then form. Convert {q} into a statement a tester could verify without asking you.",
@@ -223,9 +225,9 @@ const RUBRICS: Rubric[] = [
     label: "Edge cases",
     weight: 6,
     signals: [
-      { label: "edge cases or failure handling", weight: 45, test: /\b(edge cases?|corner cases?|errors?|fail(s|ure|ures)?|invalid|timeouts?|offline|duplicates?|race condition|rate limit\w*|concurrent|retry|retries)\b/i },
-      { label: "non-happy-path states (empty, loading, expired…)", weight: 25, test: /\b(empty state|loading|zero state|first[- ]time|expired|deleted|cancel(led|ed)?)\b/i },
-      { label: "limits and boundaries (max, locale, accessibility…)", weight: 30, test: /\b(max(imum)?|min(imum)?|limits?|exceed\w*|special characters|unicode|accessib\w+|locali[sz]\w+|time ?zones?|mobile)\b/i },
+      { label: "edge cases or failure handling", weight: 45, test: /\b(edge cases?|corner cases?|errors?|fail(s|ed|ure|ures)?|invalid|timeouts?|offline|duplicates?|race condition|rate limit\w*|concurrent|retry|retries|lock(ed|out)|expir\w+|too many)\b/i },
+      { label: "non-happy-path states (empty, loading, expired…)", weight: 25, test: /\b(empty state|loading|zero state|first[- ]time|expir\w+|deleted|cancel(led|ed)?|locked)\b/i },
+      { label: "limits and boundaries (max, locale, accessibility…)", weight: 30, test: /\b(max(imum)?|min(imum)?|limits?|exceed\w*|older than|more than|special characters|unicode|accessib\w+|locali[sz]\w+|time ?zones?|mobile)\b/i },
     ],
     why: "Most production bugs and support tickets live off the happy path. Edge cases decide whether engineering estimates are real.",
     add: "List what happens when the input is empty, huge, duplicated, unauthorised, offline, or mid-flight cancelled. Start with the flow described in {q}.",
@@ -302,18 +304,18 @@ RUBRICS.forEach((rb) => {
 });
 
 const SECTION_RE: Record<CategoryId, RegExp> = {
-  problem: /\b(problem|background|context|motivation|overview|why)\b/i,
-  user: /\b(users?|personas?|audience|target|who)\b/i,
+  problem: /\b(problem|background|context|motivation|overview|why|opportunity|challenges?|current state)\b/i,
+  user: /\b(users?|personas?|audience|target|who|who is it for|for whom|customers?)\b/i,
   evidence: /\b(evidence|research|insights?|discovery)\b/i,
   pain: /\b(pain|severity|impact|urgency)\b/i,
-  scope: /\b(scope|non-?goals?|goals?|objectives?)\b/i,
+  scope: /\b(scope|non-?goals?|goals?|objectives?|not doing|not building|won'?t|out of scope)\b/i,
   metrics: /\b(success|metrics?|kpis?|okrs?|measures?)\b/i,
   criteria: /\b(acceptance|criteria|definition of done)\b/i,
   risks: /\b(risks?|assumptions?|mitigations?)\b/i,
   edge: /\b(edge|errors?|failures?|corner)\b/i,
   deps: /\b(dependenc\w*|integrations?|prerequisites?|blockers?)\b/i,
-  priority: /\b(priorit\w*|roadmap|phases?|milestones?|must[- ]have|should[- ]have|could[- ]have|later)\b/i,
-  experiment: /\b(experiments?|a\/b|test plan|pilot|rollout|launch plan|validation)\b/i,
+  priority: /\b(priorit\w*|roadmap|phases?|milestones?|timeline|schedule|must[- ]have|should[- ]have|could[- ]have|later)\b/i,
+  experiment: /\b(experiments?|a\/b|test plan|pilot|beta|design partners?|rollout|launch plan|validation)\b/i,
 };
 
 /** Where a section *would* apply, used to pick the nearest sentence when nothing matches. */
@@ -333,7 +335,7 @@ const TOPIC_RE: Record<CategoryId, RegExp> = {
 };
 
 const CONTEXT_CATS = new Set<CategoryId>(["problem", "user", "evidence", "pain"]);
-const SOLUTION_CATS = new Set<CategoryId>(["scope", "metrics", "criteria", "risks", "edge", "deps", "priority", "experiment"]);
+const SOLUTION_CATS = new Set<CategoryId>(["metrics", "criteria", "risks", "edge", "deps", "priority", "experiment"]);
 const BONUS_NUMBERS = new Set<CategoryId>(["scope", "priority", "risks", "deps", "edge", "criteria"]);
 const BONUS_OWNER = new Set<CategoryId>(["deps", "risks", "experiment", "criteria", "priority"]);
 
@@ -397,7 +399,7 @@ interface Section {
 
 /** Strips markdown and leading numbering: "## 10. Success Metrics" and "**6.2 Risks**" both become the plain title. */
 const cleanTitle = (t: string) =>
-  t.replace(/[*_`]/g, "").replace(/:$/, "").replace(/^(?:\d+(?:\.\d+)*[.):]?|[A-Z][.)])\s+/, "").trim();
+  t.replace(/[*_`]/g, "").replace(/^[^\p{L}\p{N}]+/u, "").replace(/:$/, "").replace(/^(?:\d+(?:\.\d+)*[.):]?|[A-Z][.)])\s+/, "").trim();
 
 const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 const isKnownTitle = (t: string) => wordCount(t) <= 6 && RUBRICS.some((rb) => SECTION_RE[rb.id].test(t));
@@ -536,7 +538,7 @@ export function analyzePRD(input: string): AnalysisResult {
     const owCat = ow !== undefined && ow >= 0 ? RUBRICS[ow].id : null;
     // Words in "Success metrics" or "Risks" (e.g. retention, conversion) cannot prove the problem, user, evidence or pain.
     const eligible = [...m.entries()].filter(([ci]) => !(CONTEXT_CATS.has(RUBRICS[ci].id) && owCat && SOLUTION_CATS.has(owCat) && ow !== ci));
-    eligible.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3).forEach(([ci]) => allowed.add(`${ci}|${u}`));
+    eligible.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4).forEach(([ci]) => allowed.add(`${ci}|${u}`));
   });
 
   // 3. Score each category.
@@ -551,7 +553,8 @@ export function analyzePRD(input: string): AnalysisResult {
     raw[ci].forEach(({ sg, units: us, textHit }) => {
       const ok = us.filter((u) => allowed.has(`${ci}|${u}`));
       const gateOk = !sg.gated || score > 0;
-      if (gateOk && (textHit || ok.length > 0 || (sg.section && secState === "filled"))) {
+      const titled = sg.sectionTitle ? sections.some((x, i) => sg.sectionTitle!.test(x.title) && sectionState(sections, i) === "filled") : false;
+      if (gateOk && (textHit || ok.length > 0 || titled || (sg.section && secState === "filled"))) {
         score += sg.weight;
         found.push(sg.label);
         ok.forEach((u) => cands.push({ u, w: sg.weight }));

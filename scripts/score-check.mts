@@ -96,7 +96,10 @@ if (existsSync(privateDir)) {
 for (const file of process.argv.slice(2)) {
   const r = analyzePRD(readFileSync(file, "utf8"));
   console.log(`\n${file}\n  overall ${r.overall}`);
-  for (const c of r.categories) console.log(`  ${c.label.padEnd(22)} ${String(c.score).padStart(3)} [${c.status}]  ${c.quote ? `(${c.quote.kind}) ${c.quote.text.slice(0, 70)}` : "no mention"}`);
+  for (const c of r.categories) {
+    console.log(`  ${c.label.padEnd(22)} ${String(c.score).padStart(3)} [${c.status}]  ${c.quote ? `(${c.quote.kind}) ${c.quote.text.slice(0, 70)}` : "no mention"}`);
+    if (process.env.VERBOSE) console.log(`      found: ${c.found.join("; ") || "-"}\n      missing: ${c.missing.join("; ") || "-"}`);
+  }
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : "\nall checks passed");
