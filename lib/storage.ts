@@ -64,3 +64,13 @@ export function toggleDone(id: string, cat: string) {
   try { localStorage.setItem(dkey(id), JSON.stringify(next)); } catch {}
   notify();
 }
+
+// One feedback answer per result, remembered so the prompt does not nag.
+const fkey = (id: string) => `prd-doctor:feedback:${id}`;
+const fmemory = new Map<string, string>();
+export const readFeedback = (id: string) => get(fkey(id)) ?? fmemory.get(fkey(id)) ?? "";
+export function setFeedback(id: string, rating: string) {
+  fmemory.set(fkey(id), rating);
+  try { localStorage.setItem(fkey(id), rating); } catch {}
+  notify();
+}

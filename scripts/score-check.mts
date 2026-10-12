@@ -5,6 +5,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { analyzePRD } from "../lib/analyzer.ts";
+import { EXAMPLES } from "../lib/examples.ts";
 
 const SAMPLES: { name: string; text: string; overall: [number, number]; expect?: Record<string, [number, number]> }[] = [
   {
@@ -63,6 +64,7 @@ The first release will not attempt to:
 ## 5. Risks
 * Large exports may time out. Mitigation: cap at 50,000 rows and email a link.`,
   },
+  ...EXAMPLES.map((e) => ({ name: `example: ${e.label}`, overall: e.range, text: e.text })),
 ];
 
 let failed = 0;

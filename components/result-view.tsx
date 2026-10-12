@@ -9,6 +9,7 @@ import { copyText } from "@/lib/clipboard";
 import { downloadText, fixMarkdown, reportMarkdown } from "@/lib/report";
 import { track } from "@/lib/analytics";
 import { Burst } from "./burst";
+import { Feedback } from "./feedback";
 import { CountUp } from "./count-up";
 import { LogoMark } from "./logo";
 import { RadarChart } from "./radar-chart";
@@ -352,6 +353,7 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
   return (
     <>
       <Toolbar result={result} />
+      <Feedback id={result.id} score={result.overall} />
 
       <Section title="Prescription · where to start">
         <div className="grid gap-4 md:grid-cols-3">

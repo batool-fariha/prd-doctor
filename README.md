@@ -58,6 +58,8 @@ The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubri
 - **Export:** copy the report as Markdown, download `.md`, or print / save as PDF.
 - **Fix tracking:** copy any fix, and mark fixes as addressed with a progress meter.
 - **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only. The card prints a short public link (`/r/<18 characters>`) that opens the shared score on any device; full reports stay in the browser that made them. After an improving re-score there is also a **before and after** card (`55 to 67`, with the previous radar dashed underneath).
+- **Examples:** a rough, a decent and a strong fictional PRD (about 3, 58 and 88) from the empty editor or the Examples menu, so visitors see the range first. `scripts/score-check.mts` keeps each inside its promised range.
+- **Feedback:** "Does this score feel right?" on every result. It sends only the score, a rating, a direction and category names to analytics (events `score_feedback`, `example_loaded`), never document text, to find where the scoring disagrees with real reviewers.
 - **Diagnosis sequence:** a short "reading your PRD" pulse and category checklist before the result (click or Esc to skip; skipped for reduced-motion users).
 - **Score voice:** bands read as *Needs bed rest, Under observation, On the mend, Healthy, Cleared for review*, each with a one-line verdict; the top three fixes are labelled as a prescription (Rx 1 to 3).
 - **Linked radar:** hover a chart point or a category row to highlight the other; click to jump to that fix. A compact score pins to the header as you scroll.

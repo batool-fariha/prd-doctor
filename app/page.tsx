@@ -11,18 +11,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Tilt } from "@/components/tilt";
 import { analyzePRD, CATEGORY_ORDER, countWords, grade, MIN_WORDS, normalizeText } from "@/lib/analyzer";
 import { ACCEPT, readFile, type LoadedFile } from "@/lib/files";
+import { EXAMPLES, type Example } from "@/lib/examples";
+import { ExamplePicker } from "@/components/example-picker";
 import { track } from "@/lib/analytics";
 import { clearDraft, clearHistory, parseHistory, readDraft, readHistoryRaw, saveResult, subscribe } from "@/lib/storage";
 import { htmlToText } from "@/lib/paste";
 import { validatePRD } from "@/lib/validate";
 
-const SAMPLE = `# Saved Filters for Reports
-Problem: Support managers struggle to re-create the same report filters every morning because filters reset on each visit. In 6 of 9 interviews last month, managers said they spend about 10 minutes a day rebuilding them.
-Users: Support managers at mid-size teams (20-100 agents).
-Goals: Let users save and reuse filters. Out of scope: sharing filters between users.
-Success metrics: Reduce time to first report from 10 minutes to 2 minutes within 60 days of launch.
-Acceptance criteria: Given a saved filter, when the manager opens Reports, then the filter is applied automatically.
-Dependencies: Requires the Reports API from the platform team.`;
+
 
 const delay = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
@@ -46,6 +42,7 @@ export default function Home() {
   const words = countWords(text);
 
   function set(v: string) { setTyped(v); setError(""); }
+  function loadExample(e: Example) { set(e.text); setSource(null); track("example_loaded", { example: e.id }); }
   function reset() { set(""); setSource(null); }
 
   function analyze() {
@@ -152,7 +149,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-1 text-xs">
               <button type="button" onClick={() => fileRef.current?.click()} className="chip-btn"><Upload className="size-3.5" />Upload</button>
-              <button type="button" onClick={() => { set(SAMPLE); setSource(null); }} className="chip-btn">Sample</button>
+              <ExamplePicker onPick={loadExample} />
               {text && <button type="button" onClick={reset} className="chip-btn">Clear</button>}
               <input ref={fileRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadFile(f); e.target.value = ""; }} />
             </div>
@@ -176,7 +173,12 @@ export default function Home() {
                   <p className="mt-2 text-sm text-ink3">or drop a file anywhere in this box</p>
                   <div className="pointer-events-auto mt-5 flex flex-wrap items-center justify-center gap-2">
                     <button type="button" onClick={() => fileRef.current?.click()} className="btn-line inline-flex h-9 items-center gap-2 bg-surface px-3.5 text-[13px]"><Upload />Upload a file</button>
-                    <button type="button" onClick={() => { set(SAMPLE); setSource(null); }} className="btn-line inline-flex h-9 items-center px-3.5 text-[13px]">Try a sample</button>
+                  </div>
+                  <p className="eyebrow mt-6">Or start from an example</p>
+                  <div className="pointer-events-auto mt-2 flex flex-wrap items-center justify-center gap-2">
+                    {EXAMPLES.map((e) => (
+                      <button key={e.id} type="button" onClick={() => loadExample(e)} className="btn-line inline-flex h-9 items-center px-3.5 text-[13px]">{e.label}</button>
+                    ))}
                   </div>
                   <p className="mt-5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                     {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-surface/70 px-1.5 py-0.5">{x}</span>)}

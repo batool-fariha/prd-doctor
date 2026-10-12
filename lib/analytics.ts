@@ -1,6 +1,6 @@
 import posthog from "posthog-js";
 
-type EventName = "analysis_started" | "analysis_completed" | "share_clicked" | "score_viewed";
+type EventName = "analysis_started" | "analysis_completed" | "share_clicked" | "score_viewed" | "score_feedback" | "example_loaded";
 
 let ready = false;
 
