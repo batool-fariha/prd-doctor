@@ -130,7 +130,7 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "a research or data source (interviews, analytics, tickets…)", weight: 35, test: /^(?=.*\b(interviews?|surveys?|user research|usability|customer (feedback|calls?)|support tickets?|tickets?|NPS|CSAT|analytics|data (shows?|suggests?)|session recordings?|a\/b|study|benchmark|competitors?)\b)(?=.*(\d|\b(found|showed|told us|said|reported|observed|heard|saw|according to)\b)).*/i },
       { label: "specific numbers with units", weight: 30, test: /\b\d+(\.\d+)?\s?(%|percent|x\b|users|customers|tickets|interviews|respondents|hours|minutes|days)/i },
-      { label: "a source reference (n=, link, report name)", weight: 15, test: /\bn\s?=\s?\d+|https?:\/\/|\b(report|dashboard|deck|doc)\b/i },
+      { label: "a source reference (n=, link, report name)", weight: 15, test: /\bn\s?=\s?\d+|https?:\/\/|\b(according to|sources?:|per the)\b/i },
       { label: "a direct customer quote", weight: 10, test: /\b(said|says|told|wrote|according to|customers?|users?|participants?|interviewees?)\b[^"“”\n]{0,60}["“][^"“”\n]{15,}["”]|["“][^"“”\n]{15,}["”][^\n]{0,40}\b(said|says|told|wrote|customers?|users?|participants?)\b/i },
       { label: "a date or time window for the data", weight: 10, gated: true, test: /\b(last (week|month|quarter|year)|Q[1-4]|20\d\d)\b/i },
     ],
@@ -193,10 +193,10 @@ const RUBRICS: Rubric[] = [
     label: "Acceptance criteria",
     weight: 10,
     signals: [
-      { label: "Given / When / Then style behaviour", weight: 35, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
-      { label: "an Acceptance Criteria section", weight: 25, test: /acceptance criteria|definition of done|\bDoD\b/i },
-      { label: "testable wording (must, only, at least, within…)", weight: 20, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|then)\b/i, min: 3 },
-      { label: "a checklist or numbered requirements", weight: 20, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S/im, min: 2 },
+      { label: "Given / When / Then style behaviour", weight: 20, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
+      { label: "an Acceptance Criteria section", weight: 30, test: /acceptance criteria|definition of done|\bDoD\b/i },
+      { label: "testable wording (must, only, at least, within…)", weight: 25, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|then)\b/i, min: 3 },
+      { label: "a checklist or numbered requirements", weight: 25, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S/im, min: 2 },
     ],
     why: "Acceptance criteria are the contract between PM, design, engineering and QA. Without them, “done” is whatever the loudest person remembers.",
     add: "Write 5-8 pass/fail criteria in Given/When/Then form. Convert {q} into a statement a tester could verify without asking you.",
@@ -271,7 +271,7 @@ const RUBRICS: Rubric[] = [
     label: "Experiment design",
     weight: 6,
     signals: [
-      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\b(experiments?|A\/B|split test|hypothesis|control group|variant|treatment|holdout|pilot|beta|rollout|canary|feature flag)\b/i },
+      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\b(experiments?|A\/B|split test|hypothesis|control group|variant|treatment|holdout|pilot|beta (users|testers|test)|rollout|canary|feature flag|test(ed|ing)? with|early adopters?|design partners?)\b/i },
       { label: "sample size, duration or significance", weight: 30, test: /\b(sample size|statistical\w*|significan\w+|confidence (interval|level)|statistical power|MDE|p-?value|run for|\d+\s*(weeks|days))\b/i },
       { label: "decision criteria (ship / kill / guardrail)", weight: 30, test: /\b(ship if|kill|success criteria|go\/no-go|guardrail|stop (if|when)|decision rule)\b/i },
     ],
@@ -395,6 +395,8 @@ interface Section {
   title: string;
   body: string;
   level: number; // 0 for "Label:" style
+  /** the heading line started with a number ("4. Goals"): a parent of the unnumbered headings below it */
+  numbered?: boolean;
 }
 
 /** Strips markdown and leading numbering: "## 10. Success Metrics" and "**6.2 Risks**" both become the plain title. */
@@ -415,7 +417,7 @@ const isHeadingLine = (l: string) =>
   (/^[A-Z][A-Za-z0-9 /&'-]{1,40}:$/.test(l) && wordCount(l) <= 6) ||
   isBareHeading(l);
 
-type LineClass = { kind: "text" } | { kind: "section"; title: string; rest: string; level: number };
+type LineClass = { kind: "text" } | { kind: "section"; title: string; rest: string; level: number; numbered?: boolean };
 
 /**
  * One place that decides what a line is. A "Label: text" line starts a section only when it looks like a
@@ -433,7 +435,7 @@ function classifyLine(line: string, openLevel: number | null): LineClass {
     if (isKnownTitle(title) || openLevel === null || openLevel === 0) return { kind: "section", title, rest, level: 0 };
     return { kind: "text" };
   }
-  if (isBareHeading(line)) return { kind: "section", title: cleanTitle(line), rest: "", level: 1 };
+  if (isBareHeading(line)) return { kind: "section", title: cleanTitle(line), rest: "", level: 1, numbered: /^\d+(\.\d+)*[.)]\s/.test(line) };
   return { kind: "text" };
 }
 
@@ -451,7 +453,7 @@ function parseSections(lines: string[]): Section[] {
     const c = classifyLine(line, cur ? cur.level : null);
     if (c.kind === "section") {
       if (cur) out.push(cur);
-      cur = { title: c.title, body: c.rest, level: c.level };
+      cur = { title: c.title, body: c.rest, level: c.level, numbered: c.numbered };
     } else if (cur && line) {
       cur.body += (cur.body ? "\n" : "") + line;
     }
@@ -468,6 +470,8 @@ function sectionState(sections: Section[], i: number): "filled" | "placeholder" 
     if (s.level > 0) {
       const child = sections[i + 1];
       if (child && !(child.level > 0 && child.level <= s.level)) return "filled";
+      // Plain-text documents: "4. Goals and Non-Goals" followed by unnumbered "Goals", "Non-Goals" headings.
+      if (child && s.numbered && !child.numbered) return "filled";
     }
     return "placeholder";
   }
@@ -537,7 +541,8 @@ export function analyzePRD(input: string): AnalysisResult {
     const ow = owner.get(u);
     const owCat = ow !== undefined && ow >= 0 ? RUBRICS[ow].id : null;
     // Words in "Success metrics" or "Risks" (e.g. retention, conversion) cannot prove the problem, user, evidence or pain.
-    const eligible = [...m.entries()].filter(([ci]) => !(CONTEXT_CATS.has(RUBRICS[ci].id) && owCat && SOLUTION_CATS.has(owCat) && ow !== ci));
+    const solutionish = owCat !== null && (SOLUTION_CATS.has(owCat) || (owCat === "scope" && wordCount(u) < 7));
+    const eligible = [...m.entries()].filter(([ci]) => !(CONTEXT_CATS.has(RUBRICS[ci].id) && solutionish && ow !== ci));
     eligible.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4).forEach(([ci]) => allowed.add(`${ci}|${u}`));
   });
 
