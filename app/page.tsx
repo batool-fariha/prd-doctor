@@ -98,7 +98,7 @@ export default function Home() {
         <div className="flex items-center gap-4"><span className="hidden font-mono text-xs text-muted-foreground sm:block">Private · runs in your browser</span><ThemeToggle /></div>
       </header>
 
-      <section className="grid items-center gap-14 py-14 md:grid-cols-[1.15fr_1fr] md:py-24">
+      <section className="hero grid items-center gap-14 py-14 md:grid-cols-[1.15fr_1fr] md:py-24">
         <div>
           <p className="eyebrow rise mb-5" style={delay(0)}>A second reader for your spec</p>
           <h1 className="serif rise text-[2.6rem] leading-[1.06] sm:text-6xl" style={delay(1)}>
@@ -171,6 +171,7 @@ export default function Home() {
                   <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl border bg-surface text-violet2"><File className="size-5" /></span>
                   <p className="serif text-3xl leading-tight">Paste your PRD</p>
                   <p className="mt-2 text-sm text-ink3">or drop a file anywhere in this box</p>
+                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">12 checks · about 5 seconds · nothing leaves your browser</p>
                   <div className="pointer-events-auto mt-5 flex flex-wrap items-center justify-center gap-2">
                     <button type="button" onClick={() => fileRef.current?.click()} className="btn-line inline-flex h-9 items-center gap-2 bg-surface px-3.5 text-[13px]"><Upload />Upload a file</button>
                   </div>

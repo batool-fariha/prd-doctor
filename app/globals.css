@@ -286,29 +286,6 @@ textarea[data-slot="textarea"]:not(.bare):focus-visible { box-shadow: 0 0 0 4px 
 }
 @media print { .burst { display: none !important; } }
 
-/* Diagnosis overlay */
-.pulse-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pulse-draw 1.3s ease-in-out infinite; }
-@keyframes pulse-draw { 0% { stroke-dashoffset: 1; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
-.diag-in { animation: diag-in 400ms var(--ease) both; }
-@keyframes diag-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
-
-/* Celebration */
-.burst { position: absolute; left: 3.5rem; top: 50%; width: 0; height: 0; pointer-events: none; }
-.burst i { position: absolute; left: -3px; top: -3px; width: 7px; height: 7px; border-radius: 9999px; background: var(--c); animation: fly 950ms var(--ease) var(--t) both; }
-@keyframes fly { from { transform: rotate(var(--a)) translateY(0) scale(1); opacity: 1; } to { transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(0.3); opacity: 0; } }
-.pop { animation: pop 550ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-@keyframes pop { from { transform: scale(0.55); opacity: 0; } to { transform: none; opacity: 1; } }
-
-/* Radar / list linking */
-.flash { animation: flash 1500ms ease-out; }
-@keyframes flash { 0% { background: rgba(167, 139, 250, 0.28); } 100% { background: transparent; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .pulse-draw, .burst i, .pop, .flash, .diag-in { animation: none !important; }
-  .burst { display: none; }
-}
-@media print { .burst { display: none !important; } }
-
 /* Cursor-follow glow on cards and panels */
 .glow, .panel, .lift { position: relative; }
 .glow::after, .panel::after, .lift::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 300ms; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(167, 139, 250, 0.16), transparent 70%); }
@@ -326,3 +303,6 @@ a:focus-visible, button:focus-visible, summary:focus-visible, [role="button"]:fo
 }
 
 @media (pointer: coarse) { .chip-pick { min-height: 40px; padding-left: 14px; padding-right: 14px; } }
+
+/* Short laptop screens: keep the editor closer to the first view */
+@media (min-width: 768px) and (max-height: 820px) { .hero { padding-block: 3.5rem; } }

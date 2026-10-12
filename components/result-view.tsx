@@ -16,6 +16,7 @@ import { RadarChart } from "./radar-chart";
 import { Reveal } from "./reveal";
 import { ThemeToggle } from "./theme-toggle";
 
+const smooth = (): ScrollBehavior => (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
 const delay = (i: number) => ({ "--i": i }) as React.CSSProperties;
 const QUOTE_LABEL = { found: "You wrote", anchor: "Nearest text in your PRD", vague: "Vague wording", empty: "Placeholder section" } as const;
 
@@ -69,7 +70,7 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
     const el = document.getElementById(`fix-${CATEGORY_ORDER[i].id}`) as HTMLDetailsElement | null;
     if (!el) return;
     el.open = true;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.scrollIntoView({ behavior: smooth(), block: "center" });
     el.classList.add("flash");
     setTimeout(() => el.classList.remove("flash"), 1600);
   }
@@ -114,6 +115,7 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
                 </div>
               ))}
             </dl>
+            {result && <FixFirst result={result} select={select} />}
             <ShareControls payload={payload} id={id} prev={delta !== null && delta > 0 ? prev : null} />
             <p className="no-print mt-5 max-w-md text-xs leading-relaxed text-ink3">
               This score checks structure and specifics, not whether the idea is good.{" "}
@@ -128,6 +130,18 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
         ? <FullReport result={result} active={active} setActive={setActive} select={select} />
         : <SharedBars scores={payload.c} active={active} setActive={setActive} />}
     </main>
+  );
+}
+
+/** Jumps to the weakest category's fix, so the first screen ends in an obvious next step. */
+function FixFirst({ result, select }: { result: AnalysisResult; select: (i: number) => void }) {
+  const first = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score)[0];
+  if (!first) return null;
+  const i = CATEGORY_ORDER.findIndex((m) => m.id === first.id);
+  return (
+    <button type="button" onClick={() => select(i)} className="btn-solid no-print mt-6 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
+      Fix this first: {first.label} <ArrowRight />
+    </button>
   );
 }
 
@@ -235,6 +249,12 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
   const [mode, setMode] = useState<CardMode>("score");
   const [preview, setPreview] = useState<string | null>(null);
   const [problem, setProblem] = useState("");
+  useEffect(() => {
+    if (!preview) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(null); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [preview]);
   const progress = Boolean(prev) && mode === "progress";
   const kind = progress ? "progress" : "score";
   const q = `s=${encodePayload(payload)}${progress && prev ? `&p=${encodePrev(prev)}` : ""}`;
@@ -390,7 +410,7 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
         <Bars scores={CATEGORY_ORDER.map((m) => by(m.id).score)} active={active} setActive={setActive} select={select} selectable={(i) => fixIds.has(CATEGORY_ORDER[i].id)} />
       </Section>
 
-      <Section title={`Fixes · ${fixes.length}`} right={fixes.length > 0 ? <AddressedMeter done={doneCount} total={fixes.length} onRescore={result.text ? rescore : undefined} /> : null}>
+      <Section title={`Fixes · ${fixes.length}`} right={fixes.length > 0 ? <div className="flex flex-wrap items-center gap-4"><CopyAll fixes={fixes} /><AddressedMeter done={doneCount} total={fixes.length} onRescore={result.text ? rescore : undefined} /></div> : null}>
         {fixes.length === 0 ? <p className="text-sm text-ink2">Every category scored 70 or higher. Nothing to fix.</p> : (
           <div className="border-t">{fixes.map((c, i) => <Fix key={c.id} c={c} resultId={result.id} open={i < 2} addressed={done.has(c.id)} />)}</div>
         )}
@@ -399,6 +419,15 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
 
       <Rewrite text={result.rewrite} />
     </>
+  );
+}
+
+function CopyAll({ fixes }: { fixes: CategoryResult[] }) {
+  const [copied, flash] = useFlash();
+  return (
+    <button type="button" className="btn-line no-print inline-flex h-8 items-center gap-2 px-3 text-xs" onClick={async () => { if (await copyText(fixes.map(fixMarkdown).join("\n\n"))) flash(); }}>
+      {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy all fixes"}
+    </button>
   );
 }
 
