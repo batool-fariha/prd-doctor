@@ -131,7 +131,7 @@ const RUBRICS: Rubric[] = [
       { label: "a research or data source (interviews, analytics, tickets…)", weight: 35, test: /^(?=.*\b(interviews?|surveys?|user research|usability|customer (feedback|calls?)|support tickets?|tickets?|NPS|CSAT|analytics|data (shows?|suggests?)|session recordings?|a\/b|study|benchmark|competitors?)\b)(?=.*(\d|\b(found|showed|told us|said|reported|observed|heard|saw|according to)\b)).*/i },
       { label: "specific numbers with units", weight: 30, test: /\b\d+(\.\d+)?\s?(%|percent|x\b|users|customers|tickets|interviews|respondents|hours|minutes|days)/i },
       { label: "a source reference (n=, link, report name)", weight: 15, test: /\bn\s?=\s?\d+|https?:\/\/|\b(according to|sources?:|per the)\b/i },
-      { label: "a direct customer quote", weight: 10, test: /\b(said|says|told|wrote|according to|customers?|users?|participants?|interviewees?)\b[^"“”\n]{0,60}["“][^"“”\n]{15,}["”]|["“][^"“”\n]{15,}["”][^\n]{0,40}\b(said|says|told|wrote|customers?|users?|participants?)\b/i },
+      { label: "a direct customer quote", weight: 10, test: /\b(said|says|told us|told me|wrote|replied|according to|quote[sd]?)\b[^"“”\n]{0,60}["“][^"“”\n]{15,}["”]|["“][^"“”\n]{15,}["”][^\n]{0,40}\b(said|says|told us|wrote|replied)\b/i },
       { label: "a date or time window for the data", weight: 10, gated: true, test: /\b(last (week|month|quarter|year)|Q[1-4]|20\d\d)\b/i },
     ],
     why: "Opinions are cheap. Evidence is what separates a bet from a hunch and lets reviewers decide whether the problem is real before spending engineering time.",
@@ -409,7 +409,17 @@ const cleanTitle = (t: string) =>
 
 const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 const isKnownTitle = (t: string) => wordCount(t) <= 6 && RUBRICS.some((rb) => SECTION_RE[rb.id].test(t));
-const catOf = (t: string) => RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
+let sectionMatchers: RegExp[] | null = null; // compiled once: heading checks run for every line
+const catOf = (t: string) => {
+  const res = (sectionMatchers ??= RUBRICS.map((rb) => reOf(SECTION_RE[rb.id])));
+  let best = -1;
+  let bestAt = Infinity;
+  for (let i = 0; i < res.length; i++) {
+    const at = t.search(res[i]);
+    if (at >= 0 && at < bestAt) { best = i; bestAt = at; }
+  }
+  return best;
+};
 
 /** A short standalone line such as "Risks" or "Success metrics": how most Word and PDF documents mark sections. */
 const isNumberedHeading = (l: string) =>
@@ -500,7 +510,15 @@ export function analyzePRD(input: string): AnalysisResult {
   const lines = text.split("\n");
   const sections = parseSections(lines);
   // Heading-only lines and placeholder lines ("Risks: none") never earn credit.
-  const clean = lines.filter((l) => l.trim() && !isHeadingLine(l.trim()) && !isPlaceholderLine(l.trim())).join("\n");
+  // Front matter: label lines before the first real section ("Status: Proposed", "Owner: Product Management") describe the document.
+  const firstSection = lines.findIndex((l) => /^#{2,6}\s+\S/.test(l.trim()) || /^\d+(\.\d+)*[.)]\s+[A-Z]/.test(l.trim()));
+  const META_LABEL = /^(version|status|owner|author|authors|date|updated|last updated|created|product|product type|feature|platform|category|website|target release|release|priority|stakeholders?|team|doc(ument)? (status|owner))$/i;
+  const frontMatter = (i: number) => {
+    if (i >= 15 || (firstSection > 0 && i >= firstSection)) return false;
+    const m = lines[i].match(/^\s*[-*]?\s*\**([A-Za-z][A-Za-z ]{1,30})\**:/);
+    return Boolean(m && META_LABEL.test(m[1].trim()));
+  };
+  const clean = lines.filter((l, i) => l.trim() && !frontMatter(i) && !isHeadingLine(l.trim()) && !isPlaceholderLine(l.trim())).join("\n");
   const units = splitUnits(clean);
 
   // 1. Raw signal hits per category.
@@ -594,7 +612,9 @@ export function analyzePRD(input: string): AnalysisResult {
 
   // 3. Score each category.
   const partial = RUBRICS.map((rb, ci) => {
-    const secIdx = sections.findIndex((x) => SECTION_RE[rb.id].test(x.title));
+    // Several headings can mention a category ("Target release" and "Target Users"): use the one that has content.
+    const matching = sections.map((_, i) => i).filter((i) => catOf(sections[i].title) === ci);
+    const secIdx = matching.find((i) => sectionState(sections, i) === "filled") ?? matching[0] ?? -1;
     const secState = secIdx < 0 ? null : sectionState(sections, secIdx);
     let score = 0;
     const found: string[] = [];
