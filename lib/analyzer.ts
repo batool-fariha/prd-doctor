@@ -95,10 +95,10 @@ const RUBRICS: Rubric[] = [
     weight: 12,
     signals: [
       { label: "an explicit problem statement", weight: 25, test: /\b(problem|pain ?points?|painful|annoying|complain\w*|struggl\w+|challenges?|frustrat\w+|difficult\w*|hard to|no way to|unable|can't|cannot|lack\w*|fail\w*|friction|broken|drop-?off|go(es)? unanswered|missed)\b/i },
-      { label: "a cause (why the problem exists)", weight: 20, test: /\b(because|due to|as a result|root cause|which (causes|leads)|results? in)\b/i },
+      { label: "a cause (why the problem exists)", weight: 20, test: /\b(because|due to|as a result|root cause|which (causes|leads)|results? in|leads? to|cannot compensate|creates? (several |these |the following )?problems?)\b/i },
       { label: "a Problem / Background / Context section", weight: 20, test: /^\s*(#+\s*|\*\*)?(problem|background|context|overview|motivation|why)\b/im },
       { label: "the situation in which it happens", weight: 15, test: /\b(when|while|during|whenever|every time)\b/i },
-      { label: "the cost of leaving it unsolved", weight: 20, test: /\b(cost\w*|los(e|ing|s)|waste\w*|churn\w*|drop\w*|abandon\w*|slow\w*|hours|minutes)\b/i },
+      { label: "the cost of leaving it unsolved", weight: 20, test: /\b(cost\w*|los(e|ing|s)|waste\w*|churn\w*|drop\w*|abandon\w*|slow\w*|hours|minutes|underestimat\w+|misleading|unreliable|incorrect|mistaken for|overlook\w*)\b/i },
     ],
     why: "A PRD that starts from a solution can't be challenged, prioritised or measured. The problem statement is what the team returns to when scope and trade-offs get argued.",
     add: "Add a 2-3 sentence problem statement: who is blocked, in what situation, why it happens, and what it costs. Rewrite {q} as a problem, not a feature.",
@@ -163,7 +163,7 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "goals or in-scope items", weight: 30, test: /\b(in[- ]scope|scope|goals?|objectives?|will include|must have|MVP|v1|phase 1)\b/i },
       { label: "non-goals / out-of-scope items", weight: 35, sectionTitle: /\b(non-?goals?|not (doing|building)|out of scope|won'?t)\b/i, test: /\b(out of scope|non-?goals?|not in scope|not included|won't|will not|excluded|deferred|not (doing|building))\b/i },
-      { label: "phases, milestones or timeline", weight: 20, test: /\b(phase|milestone|release|sprint|launch|timeline|deadline)\b/i },
+      { label: "phases, milestones or timeline", weight: 20, sectionTitle: /\b(phase \d|phases|milestones?|timeline|release plan)\b/i, test: /\b(phase|milestone|release|sprint|launch|timeline|deadline)\b/i },
       { label: "a structured list of requirements", weight: 15, test: /^\s*([-*•]|\d+[.)])\s+\S/m, min: 3 },
     ],
     why: "Unwritten non-goals become scope creep. Explicit boundaries let engineering estimate honestly and let stakeholders disagree early, on paper.",
@@ -212,7 +212,7 @@ const RUBRICS: Rubric[] = [
       { label: "named risks or concerns", weight: 40, test: /\b(risks?|concerns?|uncertain\w*|unknowns?|worst case|downsides?)\b/i },
       { label: "stated assumptions", weight: 20, test: /\b(assum(e|es|ed|ption|ptions)|hypothes[ie]s)\b/i },
       { label: "mitigation or rollback plans", weight: 20, test: /\b(mitigat\w+|rollback|roll back|fallback|contingency|kill switch|feature flag)\b/i },
-      { label: "security, privacy, legal or abuse considerations", weight: 20, test: /\b(privacy|security|GDPR|compliance|legal|abuse|fraud|PII|permissions?)\b/i },
+      { label: "security, privacy, legal or abuse considerations", weight: 20, test: /\b(privacy|security|GDPR|compliance|legal|abuse|fraud|PII|permissions?|sensitive|retention|deletion|anonymi[sz]ed|confidential)\b/i },
     ],
     why: "Every plan has failure modes. Naming them early is cheap; discovering them in production, or in legal review the week before launch, is not.",
     add: "List the top 3 risks (technical, adoption, legal/privacy) each with likelihood, impact and a mitigation. State the assumptions that {q} depends on.",
@@ -241,7 +241,7 @@ const RUBRICS: Rubric[] = [
     weight: 5,
     signals: [
       { label: "named dependencies or integrations", weight: 40, test: /\b(depend(s|ency|encies)?|blocked by|requires?|prerequisite|integrat\w+|APIs?|third[- ]party|vendor|backend|infra\w*)\b/i },
-      { label: "owning teams", weight: 25, test: /\b(team|owner|DRI|engineering|design|legal|data|platform|security|support|marketing)\b/i },
+      { label: "owning teams", weight: 25, test: /\b(team|owner|DRI|engineering|legal|platform|marketing)\b/i },
       { label: "handoff, lead time or sequencing", weight: 15, test: /\b(blocked|unblock\w*|hand-?off|lead time|SLA|ETA|sequenc\w+)\b/i },
       { label: "specific systems or services", weight: 20, test: /\b(Stripe|Salesforce|Slack|Segment|Zendesk|HubSpot|Twilio|AWS|GCP|Azure|Okta|Auth0|Firebase|Postgres|Kafka|SSO|webhooks?)\b/i },
     ],
@@ -258,7 +258,7 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "priority labels (P0/P1, must/should/could)", weight: 40, test: /\bP[0-3]\b|\bMoSCoW\b|\b(must|should|could)-have\b|\b(must|should|could) have:|\bnice[- ]to[- ]have\b|\b[Pp]rioriti[sz]\w+|\b[Pp]riority\b/ },
       { label: "a prioritisation rationale (impact, effort, RICE…)", weight: 30, test: /\bRICE\b|\bICE score\b|impact\s*(vs\.?|and|\/|versus)\s*effort|effort\s*(vs\.?|and|\/|versus)\s*impact|\bKano\b|opportunity cost|\bROI\b|prioriti[sz]ed (by|because|based)|ranked by/i },
-      { label: "sequencing (v1/v2, now/next/later)", weight: 30, test: /\b(phase \d|v1|v2|MVP|roadmap|now\/next\/later|fast follow)\b/i },
+      { label: "sequencing (v1/v2, now/next/later)", weight: 30, sectionTitle: /\b(phase \d|phases|milestones?|roadmap|timeline|release plan)\b/i, test: /\b(phase \d|v1|v2|MVP|roadmap|now\/next\/later|fast follow)\b/i },
     ],
     why: "When everything is a must-have, nothing is. Ranked requirements are what let the team cut scope calmly when the schedule slips.",
     add: "Label every requirement P0/P1/P2 and give a one-line reason for the P0s. Rank the items around {q}.",
@@ -271,7 +271,7 @@ const RUBRICS: Rubric[] = [
     label: "Experiment design",
     weight: 6,
     signals: [
-      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\b(experiments?|A\/B|split test|hypothesis|control group|variant|treatment|holdout|pilot|beta (users|testers|test)|rollout|canary|feature flag|test(ed|ing)? with|early adopters?|design partners?)\b/i },
+      { label: "an experiment, pilot or staged rollout", weight: 40, test: /\btest(ed|ing)?\b[^.\n]{0,40}\bwith\b[^.\n]{0,50}\b(users?|managers?|customers?|teams?|partners?|participants?|stakeholders?)\b|\b(experiments?|A\/B|split test|hypothesis|control group|variant|treatment|holdout|pilot|beta (users|testers|test)|rollout|canary|feature flag|early adopters?|design partners?)\b/i },
       { label: "sample size, duration or significance", weight: 30, test: /\b(sample size|statistical\w*|significan\w+|confidence (interval|level)|statistical power|MDE|p-?value|run for|\d+\s*(weeks|days))\b/i },
       { label: "decision criteria (ship / kill / guardrail)", weight: 30, test: /\b(ship if|kill|success criteria|go\/no-go|guardrail|stop (if|when)|decision rule)\b/i },
     ],
@@ -336,6 +336,10 @@ const TOPIC_RE: Record<CategoryId, RegExp> = {
 
 const CONTEXT_CATS = new Set<CategoryId>(["problem", "user", "evidence", "pain"]);
 const SOLUTION_CATS = new Set<CategoryId>(["metrics", "criteria", "risks", "edge", "deps", "priority", "experiment"]);
+/** Headings whose content describes how the product behaves (not how this PRD plans its own tests or risks). */
+const SPEC_TITLE = /\b(functional requirements?|requirements|features?|user stories|user flows?)\b/i;
+/** Headings that list things the product will NOT do: they cannot prove a problem, pain or evidence. */
+const NEG_TITLE = /\b(non-?goals?|won'?t|not (doing|building)|out of scope)\b/i;
 const BONUS_NUMBERS = new Set<CategoryId>(["scope", "priority", "risks", "deps", "edge", "criteria"]);
 const BONUS_OWNER = new Set<CategoryId>(["deps", "risks", "experiment", "criteria", "priority"]);
 
@@ -408,8 +412,12 @@ const isKnownTitle = (t: string) => wordCount(t) <= 6 && RUBRICS.some((rb) => SE
 const catOf = (t: string) => RUBRICS.findIndex((rb) => SECTION_RE[rb.id].test(t));
 
 /** A short standalone line such as "Risks" or "Success metrics": how most Word and PDF documents mark sections. */
+const isNumberedHeading = (l: string) =>
+  /^\d+(\.\d+)*[.)]\s+\S/.test(l) && !/[.!?,;:]$/.test(l) && l.length <= 60 && wordCount(cleanTitle(l)) <= 6 && /^[A-Z]/.test(cleanTitle(l));
+
 const isBareHeading = (l: string) =>
-  !/^[-*•]\s/.test(l) && l.length <= 48 && wordCount(l) <= 5 && !/[.!?,;:]$/.test(l) && isKnownTitle(cleanTitle(l));
+  !/^[-*•]\s/.test(l) &&
+  ((l.length <= 48 && wordCount(l) <= 5 && !/[.!?,;:]$/.test(l) && isKnownTitle(cleanTitle(l))) || isNumberedHeading(l));
 
 const isHeadingLine = (l: string) =>
   /^#{1,6}\s+\S/.test(l) ||
@@ -510,6 +518,10 @@ export function analyzePRD(input: string): AnalysisResult {
   let cur = -1;
   let base = 0; // heading level that set `cur`; deeper sub-headings with unknown titles inherit it
   let openLevel: number | null = null;
+  const specUnits = new Set<string>();
+  const negUnits = new Set<string>();
+  let inSpec = false;
+  let inNeg = false;
   for (const l0 of lines) {
     const l = l0.trim();
     const c = classifyLine(l, openLevel);
@@ -523,8 +535,16 @@ export function analyzePRD(input: string): AnalysisResult {
       }
       else if (!(c.level > 0 && base > 0 && c.level > base && cur >= 0)) { cur = -1; base = 0; }
       openLevel = c.level;
+      // Top-level headings (numbered, or markdown # / ##) open a new zone; sub-labels inherit it.
+      if (c.numbered || (c.level > 0 && c.level <= 2)) inSpec = SPEC_TITLE.test(c.title);
+      inNeg = NEG_TITLE.test(c.title);
     }
-    if (cur >= 0 && l && !isHeadingLine(l) && !isPlaceholderLine(l)) splitUnits(l).forEach((u) => owner.set(u, cur));
+    if (l && !isHeadingLine(l) && !isPlaceholderLine(l)) {
+      const us = splitUnits(l);
+      if (inSpec) us.forEach((u) => specUnits.add(u));
+      if (inNeg) us.forEach((u) => negUnits.add(u));
+      if (cur >= 0) us.forEach((u) => owner.set(u, cur));
+    }
   }
   const credit = new Map<string, Map<number, number>>();
   raw.forEach((sigs, ci) =>
@@ -536,13 +556,39 @@ export function analyzePRD(input: string): AnalysisResult {
       }),
     ),
   );
+  const hasPrioritySection = sections.some((x) => {
+    const k = catOf(x.title);
+    return k >= 0 && RUBRICS[k].id === "priority";
+  });
+  const hasPlanSection = sections.some((x) => {
+    const k = catOf(x.title);
+    return k >= 0 && (RUBRICS[k].id === "experiment" || RUBRICS[k].id === "priority");
+  });
   const allowed = new Set<string>();
   credit.forEach((m, u) => {
     const ow = owner.get(u);
     const owCat = ow !== undefined && ow >= 0 ? RUBRICS[ow].id : null;
     // Words in "Success metrics" or "Risks" (e.g. retention, conversion) cannot prove the problem, user, evidence or pain.
     const solutionish = owCat !== null && (SOLUTION_CATS.has(owCat) || (owCat === "scope" && wordCount(u) < 7));
-    const eligible = [...m.entries()].filter(([ci]) => !(CONTEXT_CATS.has(RUBRICS[ci].id) && solutionish && ow !== ci));
+    const eligible = [...m.entries()].filter(([ci]) => {
+      const id = RUBRICS[ci].id;
+      if (CONTEXT_CATS.has(id) && solutionish && ow !== ci) return false;
+      if (CONTEXT_CATS.has(id) && negUnits.has(u)) return false;
+      if (id === "priority") {
+        if (specUnits.has(u)) return false;
+        const unowned = ow === undefined || ow < 0;
+        if (owCat !== "priority" && !(!hasPrioritySection && unowned)) return false;
+      }
+      if (id === "experiment") {
+        // Experiment design is the PRD's own plan to test its bet: credit it from plan sections (release, validation,
+        // experiment), not from product descriptions that merely use the words (a PRD for an experimentation tool).
+        if (specUnits.has(u)) return false;
+        const planOwner = owCat === "experiment" || owCat === "priority";
+        const unowned = ow === undefined || ow < 0;
+        if (!planOwner && !(!hasPlanSection && unowned)) return false;
+      }
+      return true;
+    });
     eligible.sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4).forEach(([ci]) => allowed.add(`${ci}|${u}`));
   });
 
@@ -597,9 +643,14 @@ export function analyzePRD(input: string): AnalysisResult {
     }
 
     score = Math.max(0, Math.min(100, score));
+    // A solution category (risks, edge cases...) should quote requirement or risk text, a context one (problem, pain) the narrative.
+    const sameKind = (u: string) => {
+      const o = owner.get(u);
+      return o !== undefined && o >= 0 && SOLUTION_CATS.has(RUBRICS[o].id) === SOLUTION_CATS.has(rb.id) ? 100 : 0;
+    };
     // Prefer real sentences from the category's own section; avoid lead-ins ("...:"), table rows and one-word fragments.
     const rank = (c: { u: string; w: number }) =>
-      c.w + (owner.get(c.u) === ci ? 1000 : 0) - (c.u.endsWith(":") ? 500 : 0) - (c.u.startsWith("|") ? 300 : 0) + Math.min(12, wordCount(c.u)) / 2;
+      c.w + (owner.get(c.u) === ci ? 1000 : 0) + sameKind(c.u) - (c.u.endsWith(":") ? 500 : 0) - (c.u.startsWith("|") ? 300 : 0) + Math.min(12, wordCount(c.u)) / 2;
     cands.sort((a, b) => rank(b) - rank(a));
     return { rb, score, found, missing, cands, vagueUnit, emptyText };
   });
