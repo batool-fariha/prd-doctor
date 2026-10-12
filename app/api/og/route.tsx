@@ -88,6 +88,11 @@ export async function GET(req: Request) {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 },
+    {
+      width: 1200,
+      height: 630,
+      // The image is fully determined by the URL, so let the CDN and browsers keep it (protects the free tier on a viral day).
+      headers: { "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400" },
+    },
   );
 }
