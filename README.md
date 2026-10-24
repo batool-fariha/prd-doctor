@@ -1,139 +1,201 @@
 # PRD Doctor
 
-**Live:** https://prd-doctor.vercel.app
+**Paste a PRD, get a score out of 100 and the exact sentences to fix.** Free, no account, and your document never leaves your browser.
 
-Paste a product requirements document, click **Analyze PRD**, get a 0-100 score across 12 categories. Every weak category comes with what's missing, why it matters, exactly what to add, and one question, each anchored to a sentence **quoted from your own PRD**.
+[![PRD Doctor result card](https://prd-doctor.vercel.app/opengraph-image)](https://prd-doctor.vercel.app)
 
-Next.js 16 · TypeScript · Tailwind 4 · shadcn/ui · PostHog. No auth, no database, no API keys required.
+**Try it: https://prd-doctor.vercel.app** · Built with Next.js 16, TypeScript, Tailwind 4, shadcn/ui and PostHog.
 
-## Problem
+PRD Doctor scores a product requirements document across 12 categories (problem, users, evidence, pain, scope, metrics, acceptance criteria, risks, edge cases, dependencies, prioritization, experiment design). For every weak category it says what is missing, why it matters, what to add, and one question to answer. Each fix quotes a sentence **from your own PRD**, or says "No mention found". It never writes your PRD and never makes anything up.
 
-PRDs are the most-reviewed and least-measured artifact in product work. Feedback is slow, inconsistent and social: reviewers catch what they happen to care about, and gaps (no non-goals, no baseline for the metric, no rollback plan) surface at kickoff or after launch. PMs have no fast, private, objective way to ask "is this ready for review?"
+## Contents
 
-## Target user
+- [Why it exists](#why-it-exists)
+- [What it does](#what-it-does)
+- [How scoring works](#how-scoring-works)
+- [How well does it match a human reviewer?](#how-well-does-it-match-a-human-reviewer)
+- [Privacy](#privacy)
+- [Run it locally](#run-it-locally)
+- [Testing and tuning the scoring](#testing-and-tuning-the-scoring)
+- [Architecture](#architecture)
+- [Tradeoffs](#tradeoffs)
+- [Roadmap](#roadmap)
 
-Primary: product managers (IC to group PM) at startups and scale-ups, who write PRDs weekly and review them with engineering and design. Secondary: founders and designers writing specs without a PM, and PM leads who want a consistent bar across a team.
+## Why it exists
 
-## Product hypothesis
+PRDs are the most reviewed and least measured document in product work. Feedback is slow and social: reviewers catch what they happen to care about, and gaps (no non-goals, no baseline for the metric, no rollback plan) surface at kickoff or after launch. There was no fast, private way to ask "is this ready for review?" before the meeting.
 
-> If a PM gets a specific, quote-anchored critique in under 10 seconds, before sending the PRD for review, they will fix more gaps pre-review and share the score as a quality signal.
+**Who it is for:** product managers who write PRDs weekly, plus founders and designers writing specs without a PM, and anyone learning to write one.
 
-Success looks like: high `analysis_completed / analysis_started`, repeat analyses of the same PRD with rising scores, and a healthy `share_clicked` rate per `score_viewed`.
+**The bet:** if you get a specific, quote-anchored critique in about 10 seconds, before sending the PRD out, you fix more gaps before review. Success looks like a high `analysis_completed / analysis_started`, repeat analyses of the same PRD with rising scores, and a healthy `share_clicked` rate per `score_viewed`.
 
-## Scoring model
+## What it does
 
-Twelve categories, each scored 0-100, combined into the overall score by weight:
+**Input**
+- Paste text (Google Docs and Notion formatting is converted to headings and lists), or drop in a **PDF, Word (.docx), `.md` or `.txt`** file. Files are read in your browser and never uploaded.
+- Not supported, with a clear message: scanned PDFs with no selectable text, legacy `.doc`, input under 40 words or over 60,000 characters, and code-like or repeated text.
+- Three fictional examples (rough, decent, strong) so you can see the range before using your own.
+
+**Results**
+- Overall score and verdict, a radar chart, and per-category bars. Hover to link the chart with the list; click to jump to the fix.
+- A **Fix this first** button that opens the weakest category, the top three weaknesses, your strongest section, and a suggested rewrite scaffold that keeps your own lines and leaves `[bracketed blanks]`.
+- Every fix can be copied (one at a time or **all at once**) and marked as addressed.
+
+**Iteration**
+- **Edit and re-score** puts your text back in the editor and shows `+N since last time`. Recent analyses are listed on the home page.
+- Export as Markdown, download `.md`, or print and save as PDF.
+
+**Sharing**
+- A score card (PNG) and a short public link (`/r/<18 characters>`) that opens the score on any device. The link carries **scores only**, never your text.
+- After an improving re-score, a **before and after** card (`55 to 67`, with the previous radar dashed underneath).
+- Post to LinkedIn or X from the result page.
+
+**Polish**
+- Dark mode, mobile layout with comfortable tap targets, keyboard focus, reduced-motion support, print styles.
+- A "Does this score feel right?" prompt that sends only the score and category names, to find where the scoring disagrees with real reviewers.
+
+## How scoring works
+
+Twelve categories, each scored 0 to 100, combined by weight. The weights sum to 100, so `overall = Σ(score × weight / 100)`.
 
 | Category | Weight | | Category | Weight |
 |---|---|---|---|---|
-| Problem clarity | 12 | | Risks | 7 |
-| Success metrics | 11 | | Edge cases | 6 |
-| Target user clarity | 10 | | Prioritization | 6 |
-| Evidence | 10 | | Experiment design | 6 |
-| Acceptance criteria | 10 | | Dependencies | 5 |
-| Scope | 9 | | User pain severity | 8 |
+| Problem clarity | 12 | | User pain severity | 8 |
+| Success metrics | 11 | | Risks | 7 |
+| Target user clarity | 10 | | Edge cases | 6 |
+| Evidence | 10 | | Prioritization | 6 |
+| Acceptance criteria | 10 | | Experiment design | 6 |
+| Scope | 9 | | Dependencies | 5 |
 
-Weights sum to 100, so `overall = Σ(score × weight / 100)`.
+Each category is a rubric of three to five **signals**, each with a weight and a pattern (see `RUBRICS` in `lib/analyzer.ts`). For *Success metrics*, for example: a named KPI, a numeric target or baseline, a concrete metric such as conversion or retention, and a time frame. A category's score is the sum of the signals found. The live rubric is also shown in the app at [/how-scoring-works](https://prd-doctor.vercel.app/how-scoring-works), generated from the same code so the page cannot drift.
 
-Each category is a **rubric of 3-5 signals** (see `RUBRICS` in `lib/analyzer.ts`), each with a weight and a pattern, e.g. for *Success metrics*: a named KPI (30), a numeric target/baseline (30), a concrete metric such as conversion or retention (25), a time frame (15). A category's score is the sum of detected signal weights. Two penalties: −15 for vague wording in Metrics/Acceptance criteria (“fast”, “seamless”, “better”) and −15 for generic users (“everyone”) in Target user.
+Status per category: **strong** 70 and above, **ok** 40 to 69, **weak** below 40. The top three weaknesses are ranked by points lost, `(100 − score) × weight`, so a missing success metric outranks a missing dependency list.
 
-Status: **strong** ≥ 70, **ok** 40-69, **weak** < 40. The **top 3 weaknesses** are ranked by weighted points lost, `(100 − score) × weight`, so a missing success metric outranks a missing dependency list. The **strongest section** is the highest raw score.
+### How it avoids cheap wins
 
-### How the checks avoid cheap wins
-
-- **Section-aware.** The PRD is split into sections (`# Heading`, `**Bold**`, `Label:` lines, or a plain standalone line like `Risks`, as in most Word and PDF files). A matching section that has real content earns the category's headline signal.
-- **Placeholders don't count.** `Risks: none`, `TBD`, `N/A`, or an empty heading are detected, capped at 15, and shown as a "Placeholder section" quote.
-- **One sentence can't pay everywhere.** A sentence earns credit in at most three categories: the section it sits in first, then its best matches. Heading-only lines never score.
-- **Specifics are rewarded.** Numbers (limits, counts) and named owners add a small bonus where they matter.
-- **Vague words are penalised** in metrics and acceptance criteria; "everyone" is penalised under target user.
+- **Section-aware.** The PRD is split into sections (`# Heading`, numbered headings, `**Bold**`, `Label:` lines, or a plain standalone line like `Risks`, as in most Word and PDF files). A filled section with real content earns its category's headline signal. Front matter (Version, Status, Owner) is ignored.
+- **Placeholders do not count.** `Risks: none`, `TBD`, `N/A` or an empty heading are detected and capped at 15.
+- **One sentence cannot pay everywhere.** A sentence earns credit in at most three categories, with the section it sits in first.
+- **Plans are not evidence.** A planned interview or an example query does not count as proof of the problem, and a PRD whose *product* is about experiments or prioritization does not get credit for those words. Experiment and prioritization credit comes only from the PRD's own plan sections.
+- **Specifics are rewarded.** Numbers and named owners add a small bonus; vague words ("fast", "seamless", "better") are penalised in metrics and acceptance criteria, and "everyone" under target user.
 
 ### No hallucination
 
-The engine only ever outputs (a) sentences copied from your PRD, (b) fixed rubric text, and (c) `[bracketed placeholders]`. The suggested rewrite is a scaffold: it keeps your quoted lines and leaves blanks. It never invents users, numbers or evidence. Quote kinds: *You wrote* (a sentence that satisfied part of the rubric), *Vague wording* (flagged as unmeasurable), *Placeholder section* (e.g. `Risks: none`), and *Nearest text* (the sentence closest to where the section would go). Quotes are chosen to be distinct across categories, and when nothing is relevant the report says "No mention found in your PRD" instead of quoting something unrelated.
+The output is only ever (a) sentences copied from your PRD, (b) fixed rubric text, and (c) `[bracketed placeholders]`. Quote labels tell you what you are looking at: *You wrote* (a sentence that satisfied part of the rubric), *Vague wording*, *Placeholder section*, and *Nearest text* (the closest sentence to where the section would go). Quotes are distinct across categories. When nothing is relevant, the report says "No mention found in your PRD" instead of quoting something unrelated.
 
-## Features
+## How well does it match a human reviewer?
 
-- **Edit and re-score:** returns to the editor with your text; the result shows `+N since last time` for the same PRD title. Recent analyses are listed on the home page.
-- **Input:** paste (Google Docs / Notion formatting is converted to headings and lists), or upload / drag in a **PDF, Word (.docx), `.md` or `.txt`** file. Files are parsed in the browser (`mammoth` for Word, `unpdf` for PDF, both loaded on demand) and never uploaded. Scanned PDFs (no selectable text) and legacy `.doc` files are not supported and give a clear message. Validation catches too-short, too-long (60k chars), code-like and repeated input with a clear message.
-- **Export:** copy the report as Markdown, download `.md`, or print / save as PDF.
-- **Fix tracking:** copy any fix, and mark fixes as addressed with a progress meter.
-- **Share:** score card PNG (score, radar, three metrics, result URL) and a link that carries scores only. The card prints a short public link (`/r/<18 characters>`) that opens the shared score on any device; full reports stay in the browser that made them. After an improving re-score there is also a **before and after** card (`55 to 67`, with the previous radar dashed underneath).
-- **Examples:** a rough, a decent and a strong fictional PRD (about 3, 58 and 88) from the empty editor or the Examples menu, so visitors see the range first. `scripts/score-check.mts` keeps each inside its promised range.
-- **Feedback:** "Does this score feel right?" on every result. It sends only the score, a rating, a direction and category names to analytics (events `score_feedback`, `example_loaded`), never document text, to find where the scoring disagrees with real reviewers.
-- **Diagnosis sequence:** a short "reading your PRD" pulse and category checklist before the result (click or Esc to skip; skipped for reduced-motion users).
-- **Score voice:** bands read as *Needs bed rest, Under observation, On the mend, Healthy, Cleared for review*, each with a one-line verdict; the top three fixes are labelled as a prescription (Rx 1 to 3).
-- **Linked radar:** hover a chart point or a category row to highlight the other; click to jump to that fix. A compact score pins to the header as you scroll.
-- **Improvement feedback:** an animated `+N since last time` badge and a small burst on a better score; marking every fix addressed offers "Re-score now".
-- **Dark mode:** deep violet theme, follows the system setting on first visit, toggle in the header, remembered per device. Print stays light.
-- **Charm:** cursor-follow glow on cards and a gentle tilt on the home sample card (off for touch and reduced-motion).
+It checks **structure and specifics, not whether the idea is good**. A keyword engine detects that a PRD talks about risks, not that the risks are the right ones.
 
-## Tuning the scoring
+To keep it honest, the engine was calibrated against real PRDs I scored by hand first, then tuned until it landed close without changing the rule for any single document:
 
-`node --experimental-strip-types scripts/score-check.mts [path/to/prd.md ...]` runs the regression samples (each with the range a careful reviewer would accept) and prints a per-category breakdown for any PRD you pass in, so confidential documents never need to enter the repo. Run it after every change to `lib/analyzer.ts`. `scripts/fuzz.mts` checks hostile inputs (huge, empty, emoji, RTL, nested markdown): no crashes, scores stay 0-100, and each run stays fast. Set `VERBOSE=1` to see which checks fired.
+| PRD (real, confidential, not in this repo) | My score | Engine |
+|---|---|---|
+| A | 73 | 73 |
+| B | 72 | 68 |
+| C | 69 | 66 |
+| D | 70 | 68 |
 
-## Launch hardening
+Mean absolute error is about 2 points and the engine has so far been at or below my score. Caveats: all four come from one author's well-structured template, so the zone least tested is weak and messy real-world PRDs. The regression ranges in `scripts/score-check.mts` also cover three fictional examples (about 3, 58 and 88) plus hand-written samples. If a score feels wrong to you, the in-app feedback prompt is how it gets better.
 
-- **Engine fuzzed:** 18 hostile inputs (empty, 60k chars, nested markdown, RTL and emoji text, null bytes, pathological repeats) run without errors; worst case 40 ms on ~190k characters.
-- **Failure-proof storage and copy:** if `localStorage` is blocked or full, results still open for the session; if the clipboard API is blocked, copy falls back to the legacy path, then to a prompt.
-- **Phones and in-app browsers:** the share card opens as a long-press preview where downloads are blocked; 16px textarea (no iOS zoom); 40px tap targets; no horizontal scroll.
-- **Sharing:** post to LinkedIn or X from the result, with a short public link (`/r/<code>`) and a card that always prints the public address.
-- **Trust:** a "How scoring works" page generated from the live rubric, so weights and checks can't drift from the code.
-- **Accessibility:** all text pairs checked against WCAG AA in light and dark mode, visible keyboard focus, one `h1` per page, labelled icon buttons, reduced-motion support.
-- **Discoverability and safety:** link-preview metadata, `robots.txt` (private result URLs excluded), sitemap, theme colour, and security headers (nosniff, frame, referrer and permissions policies).
-- **Double-submit guard:** repeated clicks or shortcuts create one report.
+## Privacy
 
-## Architecture
+- **Analysis runs in your browser.** There is no server-side analysis, no database and no LLM call.
+- **Where your text lives.** The result, including the PRD text (so you can edit and re-score), is stored in `localStorage` on your device only. "Clear history" wipes it. If storage is blocked, results still open for the session.
+- **Share links contain scores only.** `/r/<code>` encodes the overall score and 12 category scores. Anyone opening it sees the score, radar and bars, never the document.
+- **Analytics are minimal.** PostHog is initialised with session replay, autocapture, surveys and dead-click capture all **disabled** (`lib/analytics.ts`), so the text you type is never recorded. Six events are sent, with counts, scores and category names only: `analysis_started`, `analysis_completed`, `share_clicked`, `score_viewed`, `score_feedback`, `example_loaded`. Without `NEXT_PUBLIC_POSTHOG_KEY`, analytics are a no-op.
 
-```
-app/page.tsx                 editor → analyzePRD() in the browser → localStorage → /result/[id]
-app/result/[id]/page.tsx     server shell, generateMetadata() sets og:image from ?s=
-components/result-view.tsx   score ring, radar, bars, top-3, fixes, rewrite, share controls
-app/api/og/route.tsx         1200×630 share card PNG (next/og), also the "Download card" file
-lib/analyzer.ts              rubrics, section parsing, scoring, quotes, rewrite, share payload
-lib/storage.ts               localStorage: results, history, draft, "addressed" fixes
-lib/paste.ts                 rich-text (HTML) paste to markdown-ish text
-lib/files.ts                 PDF / Word / text file reading, fully client-side
-lib/validate.ts              input checks (length, junk, repetition)
-lib/site.ts                  author name and links shown in the footer
-components/diagnosis.tsx     pre-result scanning overlay
-components/theme-toggle.tsx  light / dark switch (tokens live in app/globals.css)
-lib/report.ts                Markdown report and per-fix export
-lib/analytics.ts             PostHog wrapper (no-op without a key)
-```
+## Run it locally
 
-- **Analysis runs client-side.** The PRD never leaves the browser, which matters because PRDs are confidential. The full result, **including the PRD text** (so you can edit and re-score), is stored in `localStorage` on your device only, and can be wiped with "Clear history".
-- **Sharing is stateless.** The share URL is `/result/<id>?s=<base64url>` where `s` holds **only the scores** (overall + 12 numbers), never the text. Anyone opening it sees the score, radar and bars; the full report appears only in the browser that created it. The same `s` drives the social preview image and the downloadable card, which shows the score, three metrics (strongest category, biggest gap, healthy categories out of 12) and the result URL.
-- **Analytics events:** `analysis_started`, `analysis_completed`, `share_clicked` (method: native/copy/download), `score_viewed` (source: own/shared). Properties are counts and scores only, never PRD text. Anonymous: `person_profiles: "identified_only"`.
-
-## Run it
+Requires Node 20 or newer for the app, and Node 22.6 or newer for the `check` and `fuzz` scripts (they use `--experimental-strip-types`).
 
 ```bash
 npm install
 cp .env.example .env.local   # optional: add NEXT_PUBLIC_POSTHOG_KEY
 npm run dev                  # http://localhost:3000
-npm run build && npm start
 ```
 
-Deploys to Vercel with zero config (set the two optional PostHog env vars). It also runs anywhere Node does.
+| Script | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm run check` | Scoring regression check (see below) |
+| `npm run fuzz` | Hostile-input check |
+
+**Environment variables** (both optional):
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project key. Public by design. Leave empty to disable analytics. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | Defaults to `https://us.i.posthog.com`. |
+
+**Deploying.** It deploys to Vercel with no configuration (Hobby tier is enough; share cards are CDN-cached so a traffic spike stays cheap). Add the two variables above in the project settings if you want analytics. It also runs anywhere Node does. The site address used in share cards and metadata lives in `lib/site.ts`; change it if you fork the project.
+
+## Testing and tuning the scoring
+
+Run after any change to `lib/analyzer.ts`:
+
+```bash
+npm run check                                   # regression ranges, all must pass
+node --experimental-strip-types scripts/score-check.mts path/to/prd.md
+VERBOSE=1 node --experimental-strip-types scripts/score-check.mts path/to/prd.md
+npm run fuzz
+```
+
+- `score-check` runs the fictional examples and hand-written samples against the range a careful reviewer would accept. Pass a file path to see a per-category breakdown of any PRD, so confidential documents never need to enter the repo. `VERBOSE=1` shows which checks fired.
+- To track your own calibration set, drop files named `<name>.expect-<score>.md` into `scripts/private/` (git-ignored). `score-check` then verifies each is within ±5 of the score you gave it.
+- `fuzz` runs 20 hostile inputs (empty, 60,000 characters, nested markdown, RTL and emoji text, null bytes, pathological repeats): no crashes, scores stay within 0 to 100, and the slowest case takes well under 100 ms.
+
+## Architecture
+
+```
+app/page.tsx                 editor → analyzePRD() in the browser → localStorage → /result/[id]
+app/result/[id]/page.tsx     server shell; generateMetadata() sets the preview image
+app/r/[code]/page.tsx        public score page from a short code
+app/api/og/route.tsx         1200×630 share card PNG (next/og), also the "Download card" file
+app/how-scoring-works/       rubric page generated from the live code
+lib/analyzer.ts              rubrics, section parsing, scoring, quotes, rewrite, share payload
+lib/examples.ts              the three fictional example PRDs
+lib/storage.ts               localStorage: results, history, draft, addressed fixes, feedback
+lib/files.ts                 PDF / Word / text reading, fully client-side
+lib/paste.ts                 rich-text paste to markdown-ish text
+lib/validate.ts              input checks (length, junk, repetition)
+lib/report.ts                Markdown report and per-fix export
+lib/analytics.ts             PostHog wrapper (no-op without a key)
+lib/site.ts                  site name, URL, author links
+components/result-view.tsx   hero, radar, bars, fixes, rewrite, share controls
+components/                  diagnosis overlay, example picker, feedback, footer, theme toggle, charts
+scripts/                     score-check.mts and fuzz.mts
+```
+
+Key decisions:
+- **Deterministic engine.** The same text always gives the same score, which makes it testable and explainable.
+- **Stateless sharing.** The short code packs the scores into 13 bytes (18 characters) so there is nothing to store.
+- **Hand-rolled radar and bars** instead of a chart library: about 40 lines, no dependency.
+- **Heavy parsers load on demand.** `mammoth` (Word) and `unpdf` (PDF) are only fetched when someone uploads that file type.
 
 ## Tradeoffs
 
-- **Heuristics over an LLM.** Deterministic, free, instant, private, explainable and testable, and it can't fabricate facts. The cost: it detects *presence* of structure, not *quality*. A PRD can say “risks: none” and still get credit for mentioning risks. Patterns are English-only and can be gamed by keyword stuffing.
-- **Stateless sharing over a database.** No infra, no PII, nothing to leak. The cost: the public link can't show the full report, and anyone can hand-craft a `?s=` payload to display a fake score (the card is a self-reported signal, not a certificate).
-- **Results in `localStorage`.** Clearing the browser loses the report. Fine for an anonymous MVP.
-- **Hand-rolled radar and bars** instead of a chart library: ~40 lines, no dependency.
+- **Heuristics over an LLM.** Free, instant, private, explainable, testable, and unable to fabricate facts. The cost: it detects *presence*, not *quality*. A PRD that says "risks: none" is caught, but one with irrelevant risks still gets credit. Patterns are English only and can be gamed by keyword stuffing.
+- **Stateless sharing over a database.** No infrastructure and nothing to leak. The cost: the public link cannot show the full report, and anyone can hand-craft a link to show a fake score. The card is a self-reported signal, not a certificate.
+- **Results in `localStorage`.** Clearing the browser loses them. Fine for an anonymous tool.
 
 ## Roadmap
 
-0. **Done:** section-aware scoring, placeholders, distinct quotes, history and re-score, upload and paste cleanup, export.
-1. **Test corpus + calibration.** Collect ~50 real PRDs, hand-label them, and tune weights and patterns against reviewer judgement.
-2. **LLM judge as an optional second pass.** Keep the rubric and quoting contract; have a model grade *quality* per signal and require its evidence to be a verbatim substring of the PRD (reject otherwise).
-3. **Persistent results** (database + short URLs) with an opt-in public report page.
-4. **Accounts and history:** score over time, team benchmarks, shared standards per org.
-5. **Integrations:** import from Notion, Google Docs, Confluence, Linear; a Slack/GitHub check that comments a score on PRD changes.
-6. **Customisable rubrics** per company (e.g. regulated industries need a compliance category).
-7. **Localisation** beyond English.
+This is a finished v1, lightly maintained. Ideas, roughly in order, not promises:
 
-## Analytics privacy
+1. **A bigger calibration set.** More PRDs from other authors, especially weak and messy ones, to widen the range the scoring has been checked on.
+2. **An optional LLM second pass.** Keep the rubric and quoting contract; have a model grade *quality*, and require its evidence to be a verbatim substring of your PRD (reject otherwise).
+3. **Customisable rubrics** per team (for example a compliance category for regulated products).
+4. **Import** from Notion, Google Docs or Confluence.
+5. **Localisation** beyond English.
 
-PostHog is initialised with session replay, autocapture, surveys and dead-click capture all **disabled** (`lib/analytics.ts`), so the PRD text typed into the editor is never recorded. Only the four named events are sent, with counts and scores as properties. Set `NEXT_PUBLIC_POSTHOG_KEY` (see `.env.example`); without it analytics are a no-op.
+## Contributing
+
+Issues and pull requests are welcome, especially a PRD where the score felt wrong (remove anything confidential first). Run `npm run lint`, `npm run typecheck`, `npm run check` and `npm run fuzz` before opening a PR.
+
+## Author
+
+Designed and built by [Fariha Batool](https://www.linkedin.com/in/fariha-batool/). Source: https://github.com/batool-fariha/prd-doctor
