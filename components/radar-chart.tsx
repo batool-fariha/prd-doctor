@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function RadarChart({ scores, active = null, onActive, onSelect }: Props) {
-  const size = 400, c = size / 2, R = 120, n = scores.length;
+  const size = 400, c = size / 2, R = 126, n = scores.length;
   const pt = (i: number, r: number) => {
     const a = (Math.PI * 2 * i) / n - Math.PI / 2;
     return [c + r * Math.cos(a), c + r * Math.sin(a)] as const;
@@ -32,13 +32,13 @@ export function RadarChart({ scores, active = null, onActive, onSelect }: Props)
           <polygon points={scores.map((s, i) => pt(i, (R * s) / 100).join(",")).join(" ")} fill="rgba(124,92,255,0.16)" stroke="#6D4AFF" strokeWidth={1.75} strokeLinejoin="round" />
           {scores.map((s, i) => {
             const [x, y] = pt(i, (R * s) / 100);
-            const [lx, ly] = pt(i, R + 26);
+            const [lx, ly] = pt(i, R + 28);
             const on = active === i;
             return (
               <g key={i}>
                 {on && <circle cx={x} cy={y} r={11} fill="rgba(109,74,255,0.18)" />}
                 <circle cx={x} cy={y} r={on ? 5 : 3} fill="#6D4AFF" stroke="var(--surface)" strokeWidth={1.5} style={{ transition: "r 200ms" }} />
-                <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill={on ? "var(--foreground)" : "var(--ink-2)"} fontSize={11} fontWeight={on ? 700 : 500}>
+                <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill={on ? "var(--foreground)" : "var(--ink-2)"} fontSize={12.5} fontWeight={on ? 700 : 500}>
                   {CATEGORY_ORDER[i].label.split(" ")[0]}
                 </text>
                 {interactive && (

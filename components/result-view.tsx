@@ -18,7 +18,7 @@ import { ThemeToggle } from "./theme-toggle";
 
 const smooth = (): ScrollBehavior => (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
 const delay = (i: number) => ({ "--i": i }) as React.CSSProperties;
-const QUOTE_LABEL = { found: "You wrote", anchor: "Nearest text in your PRD", vague: "Vague wording", empty: "Placeholder section" } as const;
+const QUOTE_LABEL = { found: "You wrote", anchor: "Closest text", vague: "Vague wording", empty: "Placeholder section" } as const;
 
 function useFlash() {
   const [on, setOn] = useState(false);
@@ -91,7 +91,7 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
       </header>
 
       <section ref={heroRef} className="rise my-8 md:my-10" style={delay(0)}>
-        <div className="panel grid items-center gap-8 p-6 md:grid-cols-[1fr_340px] md:p-10">
+        <div className="panel grid items-center gap-8 p-6 md:grid-cols-[1fr_380px] md:p-10">
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <p className="eyebrow">{result ? "Your PRD" : "Shared result"}</p>
@@ -110,13 +110,13 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
             <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
               {stats.map((m) => (
                 <div key={m.k} className="bg-surface/90 px-4 py-3">
-                  <dt className="eyebrow">{m.k}</dt>
-                  <dd className="mt-1 text-sm font-medium leading-snug text-foreground">{m.v}</dd>
+                  <dt className="eyebrow whitespace-nowrap">{m.k.replace("Healthy categories", "Healthy")}</dt>
+                  <StatValue v={m.v} />
                 </div>
               ))}
             </dl>
             {result && <FixFirst result={result} select={select} />}
-            <ShareControls payload={payload} id={id} prev={delta !== null && delta > 0 ? prev : null} />
+            <ShareControls quiet={Boolean(result?.categories.some((c) => c.status !== "strong"))} payload={payload} id={id} prev={delta !== null && delta > 0 ? prev : null} />
             <p className="no-print mt-5 max-w-md text-xs leading-relaxed text-ink3">
               This score checks structure and specifics, not whether the idea is good.{" "}
               <Link href="/how-scoring-works" className="underline underline-offset-4 hover:text-foreground">How scoring works</Link>
@@ -138,13 +138,24 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
   );
 }
 
+/** "Success metrics · 100" reads as a name with its score beneath, so every cell has the same two-line shape. */
+function StatValue({ v }: { v: string }) {
+  const [name, score] = v.split(" · ");
+  return (
+    <dd className="mt-1.5 leading-snug">
+      <span className="block text-sm font-medium text-foreground">{name}</span>
+      <span className="block font-mono text-xs text-muted-foreground">{score ?? "scoring 70+"}</span>
+    </dd>
+  );
+}
+
 /** Jumps to the weakest category's fix, so the first screen ends in an obvious next step. */
 function FixFirst({ result, select }: { result: AnalysisResult; select: (i: number) => void }) {
   const first = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score)[0];
   if (!first) return null;
   const i = CATEGORY_ORDER.findIndex((m) => m.id === first.id);
   return (
-    <button type="button" onClick={() => select(i)} className="btn-solid no-print mt-6 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
+    <button type="button" onClick={() => select(i)} className="btn-solid no-print mt-7 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
       Fix this first: {first.label} <ArrowRight />
     </button>
   );
@@ -249,7 +260,7 @@ function SharedBars({ scores, active, setActive }: LinkProps & { scores: number[
 
 type CardMode = "score" | "progress";
 
-function ShareControls({ payload, id, prev }: { payload: SharePayload; id: string; prev: PrevPayload | null }) {
+function ShareControls({ payload, id, prev, quiet }: { payload: SharePayload; id: string; prev: PrevPayload | null; quiet: boolean }) {
   const [copied, flash] = useFlash();
   const [mode, setMode] = useState<CardMode>("score");
   const [preview, setPreview] = useState<string | null>(null);
@@ -309,7 +320,7 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
 
   const round = "btn-line grid size-10 place-items-center text-ink2 hover:text-foreground";
   return (
-    <div className="no-print mt-8">
+    <div className="no-print mt-4">
       {prev && (
         <div role="group" aria-label="Share card style" className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border bg-surface/70 p-0.5 text-xs">
           {(["score", "progress"] as const).map((m) => (
@@ -320,7 +331,7 @@ function ShareControls({ payload, id, prev }: { payload: SharePayload; id: strin
         </div>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={share} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
+        <button onClick={share} className={`${quiet ? "btn-line border-[#A78BFA]" : "btn-solid"} inline-flex h-10 items-center gap-2 px-5 text-sm font-medium`}>
           {copied ? <Check /> : <Share />}{copied ? "Link copied" : progress ? "Share my progress" : "Share my PRD score"}
         </button>
         <button onClick={download} className="btn-line inline-flex h-10 items-center gap-2 px-4 text-sm"><Download />Download card</button>
@@ -468,10 +479,18 @@ function Fix({ c, open, addressed, resultId }: { c: CategoryResult; open: boolea
       <div className="grid gap-x-10 gap-y-5 pb-8 text-[15px] leading-relaxed text-ink2 md:grid-cols-[180px_1fr]">
         <Row k={c.quote ? QUOTE_LABEL[c.quote.kind] : "Nearest text"}>
           {c.quote
-            ? <blockquote className="serif text-lg italic leading-snug text-foreground">“{c.quote.text}”</blockquote>
+            ? <blockquote className="serif border-l-2 border-[#A78BFA] pl-4 text-lg italic leading-snug text-foreground">“{c.quote.text}”</blockquote>
             : <span className="text-ink3">No mention found in your PRD.</span>}
         </Row>
-        <Row k="What is missing">{c.missing.length ? c.missing.join("; ") : "Nothing structural, but the signals found are thin."}</Row>
+        <Row k="What is missing">
+          {c.missing.length ? (
+            <ul className="space-y-1.5">
+              {c.missing.map((m) => (
+                <li key={m} className="flex gap-2.5"><span aria-hidden className="mt-[0.6em] h-px w-3 shrink-0 bg-[#A78BFA]" />{m}</li>
+              ))}
+            </ul>
+          ) : "Nothing structural, but the signals found are thin."}
+        </Row>
         <Row k="Why it matters">{c.why}</Row>
         <Row k="What to add">{c.add}</Row>
         <Row k="Question"><span className="serif text-lg text-foreground">{c.question}</span></Row>

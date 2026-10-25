@@ -206,7 +206,7 @@ export default function Home() {
                 <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">{mod}</kbd>
                 <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
               </span>
-              <button type="button" onClick={analyze} disabled={Boolean(busy)} className="btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium disabled:opacity-60">
+              <button type="button" onClick={analyze} disabled={Boolean(busy)} className={`btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium transition-opacity disabled:opacity-60 ${words < MIN_WORDS ? "opacity-70" : ""}`}>
                 {draft && typed === null ? "Re-score" : "Analyze PRD"} <ArrowRight />
               </button>
             </div>
