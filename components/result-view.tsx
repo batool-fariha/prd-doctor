@@ -157,7 +157,7 @@ function FixFirst({ result, select }: { result: AnalysisResult; select: (i: numb
   const i = CATEGORY_ORDER.findIndex((m) => m.id === first.id);
   return (
     <button type="button" onClick={() => select(i)} className="btn-solid no-print mt-7 inline-flex h-10 items-center gap-2 px-5 text-sm font-medium">
-      Fix this first: {first.label} <ArrowRight />
+      {result.overall >= 80 ? "Polish next" : "Fix this first"}: {first.label} <ArrowRight />
     </button>
   );
 }
@@ -380,7 +380,8 @@ function Toolbar({ result }: { result: AnalysisResult }) {
 function FullReport({ result, active, setActive, select }: LinkProps & { result: AnalysisResult; select: (i: number) => void }) {
   const by = (id: string) => result.categories.find((c) => c.id === id)!;
   const strongest = by(result.strongest);
-  const fixes = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score);
+  // Most points lost first, the same order as "where to start", so the list and the cards never disagree.
+  const fixes = result.categories.filter((c) => c.status !== "strong").sort((a, b) => (100 - b.score) * b.weight - (100 - a.score) * a.weight || a.score - b.score);
   const fixIds = new Set(fixes.map((f) => f.id));
   // "Where to start" only lists categories that actually need work; a strong one is not a prescription.
   const rx = result.weakest.map(by).filter((c) => c.status !== "strong");
@@ -471,7 +472,7 @@ function Fix({ c, open, addressed, resultId }: { c: CategoryResult; open: boolea
     <details id={`fix-${c.id}`} open={open} className={`group scroll-mt-24 border-b transition-opacity ${addressed ? "opacity-60" : ""}`}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className="serif flex items-center gap-2 text-2xl">{addressed && <Check className="pop text-[#346538]" />}{c.label}</span>
+          <span className="serif flex items-center gap-2 text-2xl">{addressed && <Check className="pop text-okink" />}{c.label}</span>
           {addressed ? <span className="pop rounded-full bg-[#EDF3EC] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[#346538]">Addressed</span> : <Tag status={c.status} />}
         </span>
         <span className="flex items-center gap-4 text-muted-foreground">
@@ -562,7 +563,7 @@ function Rewrite({ text }: { text: string }) {
               <h4 className="eyebrow pt-1">{b.heading}</h4>
               <div className="max-w-2xl space-y-2.5 text-[15px] leading-relaxed text-ink2">
                 {b.rows.map((r, i) => r.kind === "ok"
-                  ? <p key={i} className="flex items-center gap-2 text-[13px] text-ink3"><Check className="size-3.5 text-[#346538]" />Looks solid. Keep as is.</p>
+                  ? <p key={i} className="flex items-center gap-2 text-[13px] text-ink3"><Check className="size-3.5 text-okink" />Looks solid. Keep as is.</p>
                   : r.kind === "fill"
                     ? <p key={i}><span className="eyebrow mr-2">Fill in</span><Blanks text={r.text} /></p>
                     : (
