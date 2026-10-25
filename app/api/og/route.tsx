@@ -78,12 +78,16 @@ export async function GET(req: Request) {
 
         <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 14 }}>
-            {metrics.map((m) => (
-              <div key={m.k} style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.85)", border: "1px solid #D9CEFF", borderRadius: 14, padding: "12px 20px" }}>
-                <div style={{ display: "flex", fontSize: 17, opacity: 0.6 }}>{m.k}</div>
-                <div style={{ display: "flex", fontSize: 24, fontWeight: 600 }}>{m.v}</div>
-              </div>
-            ))}
+            {metrics.map((m) => {
+              const [name, score] = m.v.split(" · ");
+              return (
+                <div key={m.k} style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.85)", border: "1px solid #D9CEFF", borderRadius: 14, padding: "12px 22px", minWidth: 190 }}>
+                  <div style={{ display: "flex", fontSize: 17, opacity: 0.6 }}>{m.k.replace("Healthy categories", "Healthy")}</div>
+                  <div style={{ display: "flex", fontSize: 25, fontWeight: 600, marginTop: 2 }}>{name}</div>
+                  <div style={{ display: "flex", fontSize: 18, opacity: 0.55 }}>{score ?? "scoring 70+"}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
