@@ -56,6 +56,8 @@ export interface AnalysisResult {
   title: string;
   /** Normalised PRD text, kept only in the browser so the user can edit and re-score. */
   text?: string;
+  /** True when the text does not look like English, so the English-only checks may undercount. */
+  notEnglish?: boolean;
   prev?: { id: string; overall: number; createdAt: number; c?: number[] };
 }
 
@@ -195,8 +197,9 @@ const RUBRICS: Rubric[] = [
     signals: [
       { label: "Given / When / Then style behaviour", weight: 20, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
       { label: "an Acceptance Criteria section", weight: 30, test: /acceptance criteria|definition of done|\bDoD\b/i },
-      { label: "testable wording (must, only, at least, within…)", weight: 25, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|then)\b/i, min: 3 },
+      { label: "testable wording (must, only, at least, within…)", weight: 25, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|under \d|below \d|less than \d|fewer than \d|then)\b|\bp(9\d|50)\b/i, min: 2 },
       { label: "a checklist or numbered requirements", weight: 25, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S/im, min: 2 },
+      { label: "stated behaviour for a condition (if X, show or return Y)", weight: 15, test: /\bif\b[^.\n]{3,110},\s*(then\s+)?(show|display|return|block|disable|send|retry|redirect|prompt|warn|ask|reject|allow|fall back|skip)\w*/i, min: 2 },
     ],
     why: "Acceptance criteria are the contract between PM, design, engineering and QA. Without them, “done” is whatever the loudest person remembers.",
     add: "Write 5-8 pass/fail criteria in Given/When/Then form. Convert {q} into a statement a tester could verify without asking you.",
@@ -225,7 +228,7 @@ const RUBRICS: Rubric[] = [
     label: "Edge cases",
     weight: 6,
     signals: [
-      { label: "edge cases or failure handling", weight: 45, test: /\b(edge cases?|corner cases?|errors?|fail(s|ed|ure|ures)?|invalid|timeouts?|offline|duplicates?|race condition|rate limit\w*|concurrent|retry|retries|lock(ed|out)|expir\w+|too many)\b/i },
+      { label: "edge cases or failure handling", weight: 45, test: /\b(edge cases?|corner cases?|errors?|fail(s|ed|ure|ures)?|invalid|timeouts?|offline|duplicates?|race condition|rate limit\w*|concurrent|retry|retries|lock(ed|out)|expir\w+|too many|zero[- ]results?|no results?|stale|unavailable|partial(ly)?)\b/i },
       { label: "non-happy-path states (empty, loading, expired…)", weight: 25, test: /\b(empty state|loading|zero state|first[- ]time|expir\w+|deleted|cancel(led|ed)?|locked)\b/i },
       { label: "limits and boundaries (max, locale, accessibility…)", weight: 30, test: /\b(max(imum)?|min(imum)?|limits?|exceed\w*|older than|more than|special characters|unicode|accessib\w+|locali[sz]\w+|time ?zones?|mobile)\b/i },
     ],
@@ -285,6 +288,8 @@ const RUBRICS: Rubric[] = [
 
 // ---------- text helpers ----------
 
+/** A one-line "Timeline: Q2" is not a prioritisation section: the headline signal needs a prioritisation heading or a section with real content. */
+const PRIORITY_HEADING = /\b(priorit\w*|must[- ]have|should[- ]have|could[- ]have|moscow|rice)\b/i;
 const VAGUE =
   /\b(fast|quick(ly)?|easy|easily|intuitive|user[- ]friendly|seamless(ly)?|robust|better|improved?|modern|simple|scalable|great|delight\w*|etc\.?)\b/i;
 const GENERIC_USER = /\b(everyone|everybody|all users|any user|anyone|all customers)\b/i;
@@ -505,6 +510,15 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+const EN_WORDS = new Set("the of and to a in is for that on with as are be this it by or from at an we will not can have has but if when which should their they users user our all more also than into each per".split(" "));
+
+/** English-only checks undercount a PRD in another language. Share of common English words is a cheap, dependable tell (about 24 to 50% in English PRDs, under 2% in French, Spanish or German). */
+export function looksNotEnglish(text: string): boolean {
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  if (words.length < MIN_WORDS) return false;
+  return words.filter((w) => EN_WORDS.has(w)).length / words.length < 0.03;
+}
+
 export function analyzePRD(input: string): AnalysisResult {
   const text = normalizeText(input);
   const lines = text.split("\n");
@@ -625,7 +639,7 @@ export function analyzePRD(input: string): AnalysisResult {
       const ok = us.filter((u) => allowed.has(`${ci}|${u}`));
       const gateOk = !sg.gated || score > 0;
       const titled = sg.sectionTitle ? sections.some((x, i) => sg.sectionTitle!.test(x.title) && sectionState(sections, i) === "filled") : false;
-      if (gateOk && (textHit || ok.length > 0 || titled || (sg.section && secState === "filled"))) {
+      if (gateOk && (textHit || ok.length > 0 || titled || (sg.section && secState === "filled" && (rb.id !== "priority" || PRIORITY_HEADING.test(sections[secIdx].title) || wordCount(sections[secIdx].body) >= 12)))) {
         score += sg.weight;
         found.push(sg.label);
         ok.forEach((u) => cands.push({ u, w: sg.weight }));
@@ -734,6 +748,7 @@ export function analyzePRD(input: string): AnalysisResult {
     rewrite: buildRewrite(text, categories),
     title: titleOf(text),
     text,
+    ...(looksNotEnglish(text) ? { notEnglish: true } : {}),
   };
 }
 

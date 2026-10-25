@@ -126,6 +126,11 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
         </div>
       </section>
 
+      {result?.notEnglish && (
+        <p role="note" className="no-print mb-8 rounded-lg border bg-surface2/80 px-4 py-3 text-sm text-ink2">
+          This PRD doesn&apos;t look like it is written in English. The checks look for English wording, so the score is probably lower than it should be. Treat it as a rough guide.
+        </p>
+      )}
       {result
         ? <FullReport result={result} active={active} setActive={setActive} select={select} />
         : <SharedBars scores={payload.c} active={active} setActive={setActive} />}
