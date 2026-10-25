@@ -511,17 +511,67 @@ function Row({ k, children }: { k: string; children: React.ReactNode }) {
   return (<><div className="eyebrow pt-1">{k}</div><div className="max-w-2xl">{children}</div></>);
 }
 
+type RewriteRow = { kind: "yours" | "nearest" | "placeholder" | "ok" | "fill"; text: string };
+
+/** Reads the plain-text scaffold back into blocks so it can be shown as a document. The copied text stays the raw scaffold. */
+function parseRewrite(text: string) {
+  const blocks: { heading: string; rows: RewriteRow[] }[] = [];
+  let title = "";
+  let note = "";
+  for (const line of text.split("\n")) {
+    if (line.startsWith("## ")) blocks.push({ heading: line.slice(3), rows: [] });
+    else if (line.startsWith("# ")) title = line.slice(2);
+    else if (line.startsWith("> ")) note = line.slice(2);
+    else if (blocks.length) {
+      const b = blocks[blocks.length - 1];
+      if (line.startsWith("Your text: ")) b.rows.push({ kind: "yours", text: line.slice(11) });
+      else if (line.startsWith("Nearest text: ")) b.rows.push({ kind: "nearest", text: line.slice(14) });
+      else if (line.startsWith("Currently a placeholder: ")) b.rows.push({ kind: "placeholder", text: line.slice(25) });
+      else if (line.startsWith("Looks solid")) b.rows.push({ kind: "ok", text: line });
+      else if (line.startsWith("Fill in: ")) b.rows.push({ kind: "fill", text: line.slice(9) });
+    }
+  }
+  return { title, note, blocks };
+}
+
+/** [blanks] get a chip so it is obvious what only the author can fill in. */
+function Blanks({ text }: { text: string }) {
+  return <>{text.split(/(\[[^\]]*\])/).map((part, i) => /^\[.*\]$/.test(part)
+    ? <span key={i} className="mx-0.5 rounded bg-softlav px-1.5 py-0.5 font-mono text-[12px] text-violet2">{part}</span>
+    : <span key={i}>{part}</span>)}</>;
+}
+
 function Rewrite({ text }: { text: string }) {
   const [copied, flash] = useFlash();
+  const doc = useMemo(() => parseRewrite(text), [text]);
   return (
-    <Section title="Suggested rewrite">
-      <div className="rounded-xl border bg-surface2/80 p-6">
-        <div className="no-print mb-4 flex justify-end">
-          <button onClick={async () => { if (await copyText(text)) flash(); }} className="btn-line inline-flex h-8 items-center gap-2 px-3 text-xs">
-            {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy"}
-          </button>
+    <Section title="Suggested rewrite" right={
+      <button onClick={async () => { if (await copyText(text)) flash(); }} className="btn-line no-print inline-flex h-8 items-center gap-2 px-3 text-xs">
+        {copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy as Markdown"}
+      </button>
+    }>
+      <div className="rounded-xl border bg-surface2/60 p-6 md:p-8">
+        {doc.title && <h3 className="serif text-3xl leading-tight">{doc.title}</h3>}
+        {doc.note && <p className="mt-2 max-w-xl text-sm text-ink3">{doc.note}</p>}
+        <div className="mt-6 divide-y">
+          {doc.blocks.map((b) => (
+            <div key={b.heading} className="grid gap-x-10 gap-y-2 py-5 md:grid-cols-[180px_1fr]">
+              <h4 className="eyebrow pt-1">{b.heading}</h4>
+              <div className="max-w-2xl space-y-2.5 text-[15px] leading-relaxed text-ink2">
+                {b.rows.map((r, i) => r.kind === "ok"
+                  ? <p key={i} className="flex items-center gap-2 text-[13px] text-ink3"><Check className="size-3.5 text-[#346538]" />Looks solid. Keep as is.</p>
+                  : r.kind === "fill"
+                    ? <p key={i}><span className="eyebrow mr-2">Fill in</span><Blanks text={r.text} /></p>
+                    : (
+                      <div key={i}>
+                        {r.kind !== "yours" && <p className="eyebrow mb-1">{r.kind === "nearest" ? "Closest text" : "Placeholder now"}</p>}
+                        <blockquote className="serif border-l-2 border-[#A78BFA] pl-4 text-lg italic leading-snug text-foreground">{r.text}</blockquote>
+                      </div>
+                    ))}
+              </div>
+            </div>
+          ))}
         </div>
-        <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed">{text}</pre>
       </div>
     </Section>
   );
