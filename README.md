@@ -75,7 +75,7 @@ Status per category: **strong** 70 and above, **ok** 40 to 69, **weak** below 40
 
 - **Section-aware.** The PRD is split into sections (`# Heading`, numbered headings, `**Bold**`, `Label:` lines, or a plain standalone line like `Risks`, as in most Word and PDF files). A filled section with real content earns its category's headline signal. Front matter (Version, Status, Owner) is ignored.
 - **Placeholders do not count.** `Risks: none`, `TBD`, `N/A` or an empty heading are detected and capped at 15.
-- **One sentence cannot pay everywhere.** A sentence earns credit in at most three categories, with the section it sits in first.
+- **One sentence cannot pay everywhere.** A sentence earns credit in at most four categories, with the section it sits in first.
 - **Plans are not evidence.** A planned interview or an example query does not count as proof of the problem, and a PRD whose *product* is about experiments or prioritization does not get credit for those words. Experiment and prioritization credit comes only from the PRD's own plan sections.
 - **Specifics are rewarded.** Numbers and named owners add a small bonus; vague words ("fast", "seamless", "better") are penalised in metrics and acceptance criteria, and "everyone" under target user.
 

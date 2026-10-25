@@ -161,7 +161,7 @@ export default function Home() {
               onChange={(e) => { set(e.target.value); if (source) setSource(null); }}
               onPaste={onPaste}
               onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") analyze(); }}
-              className="bare min-h-[380px] resize-y rounded-none border-0 bg-transparent p-6 text-base leading-relaxed shadow-none md:text-[15px]"
+              className="bare min-h-[460px] resize-y sm:min-h-[380px] rounded-none border-0 bg-transparent p-6 text-base leading-relaxed shadow-none md:text-[15px]"
               aria-label="PRD text"
               aria-invalid={Boolean(error)}
             />
@@ -181,7 +181,7 @@ export default function Home() {
                       <button key={e.id} type="button" onClick={() => loadExample(e)} className="btn-line inline-flex h-9 items-center px-3.5 text-[13px]">{e.label}</button>
                     ))}
                   </div>
-                  <p className="mt-5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                  <p className="mt-5 hidden flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground sm:flex">
                     {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-surface/70 px-1.5 py-0.5">{x}</span>)}
                   </p>
                 </div>
@@ -201,12 +201,12 @@ export default function Home() {
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-t bg-surface/60 px-5 py-3.5">
             <WordMeter words={words} />
-            <div className="flex items-center gap-3">
+            <div className="flex w-full items-center gap-3 sm:w-auto">
               <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
                 <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">{mod}</kbd>
                 <kbd className="rounded border bg-surface2 px-1.5 py-0.5 font-mono text-[11px]">↵</kbd>
               </span>
-              <button type="button" onClick={analyze} disabled={Boolean(busy)} className={`btn-solid inline-flex h-10 items-center gap-2 px-5 text-sm font-medium transition-opacity disabled:opacity-60 ${words < MIN_WORDS ? "opacity-70" : ""}`}>
+              <button type="button" onClick={analyze} disabled={Boolean(busy)} className={`btn-solid inline-flex h-10 flex-1 items-center justify-center gap-2 px-5 sm:flex-none text-sm font-medium transition-opacity disabled:opacity-60 ${words < MIN_WORDS ? "opacity-70" : ""}`}>
                 {draft && typed === null ? "Re-score" : "Analyze PRD"} <ArrowRight />
               </button>
             </div>

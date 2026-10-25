@@ -545,7 +545,7 @@ export function analyzePRD(input: string): AnalysisResult {
     }),
   );
 
-  // 2. A sentence earns credit in at most 3 categories: the section it sits in, then its best matches.
+  // 2. A sentence earns credit in at most 4 categories: the section it sits in, then its best matches.
   const owner = new Map<string, number>();
   let cur = -1;
   let base = 0; // heading level that set `cur`; deeper sub-headings with unknown titles inherit it

@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 const rules = [
   ["Section-aware", "A heading or label such as “Risks” counts only if the section has real content under it."],
   ["Placeholders don't count", "“Risks: none”, “TBD”, “N/A” and empty sections are detected and capped at 15 for that category."],
-  ["No double-dipping", "A single sentence can earn credit in at most three categories: the section it sits in, then its best matches."],
+  ["No double-dipping", "A single sentence can earn credit in at most four categories: the section it sits in, then its best matches."],
+  ["Plans are not evidence", "A planned interview or an example query does not prove the problem. A PRD about experiments or prioritization does not get credit for those words either: that credit comes from its own plan."],
   ["Specifics are rewarded", "Concrete numbers (limits, counts, dates) and named owners add a small bonus where they matter."],
   ["Vague words cost points", "“Fast”, “seamless” or “better” in metrics and acceptance criteria subtract 15. “Everyone” as a target user does too."],
 ];

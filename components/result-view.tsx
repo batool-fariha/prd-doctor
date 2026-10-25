@@ -107,10 +107,10 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
             <p className="mt-2 max-w-md text-sm text-ink3">
               {result ? `${result.title} · ${result.words.toLocaleString()} words read across twelve categories.` : "A summary of scores. The PRD text itself is never shared."}
             </p>
-            <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
+            <dl className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border">
               {stats.map((m) => (
-                <div key={m.k} className="bg-surface/90 px-4 py-3">
-                  <dt className="eyebrow whitespace-nowrap">{m.k.replace("Healthy categories", "Healthy")}</dt>
+                <div key={m.k} className="bg-surface/90 px-2.5 py-3 sm:px-4">
+                  <dt className="eyebrow text-[10px] tracking-[0.05em] sm:whitespace-nowrap sm:text-xs sm:tracking-[0.07em]">{m.k.replace("Healthy categories", "Healthy")}</dt>
                   <StatValue v={m.v} />
                 </div>
               ))}
@@ -143,7 +143,7 @@ function StatValue({ v }: { v: string }) {
   const [name, score] = v.split(" · ");
   return (
     <dd className="mt-1.5 leading-snug">
-      <span className="block text-sm font-medium text-foreground">{name}</span>
+      <span className="block text-[13px] font-medium text-foreground sm:text-sm">{name}</span>
       <span className="block font-mono text-xs text-muted-foreground">{score ?? "scoring 70+"}</span>
     </dd>
   );
