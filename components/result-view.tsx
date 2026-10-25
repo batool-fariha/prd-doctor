@@ -151,7 +151,8 @@ function StatValue({ v }: { v: string }) {
 
 /** Jumps to the weakest category's fix, so the first screen ends in an obvious next step. */
 function FixFirst({ result, select }: { result: AnalysisResult; select: (i: number) => void }) {
-  const first = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score)[0];
+  // Same order as the Rx cards (most points lost first), so the button and "Rx 1" never disagree.
+  const first = result.weakest.map((id) => result.categories.find((c) => c.id === id)!).find((c) => c.status !== "strong");
   if (!first) return null;
   const i = CATEGORY_ORDER.findIndex((m) => m.id === first.id);
   return (
@@ -381,6 +382,8 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
   const strongest = by(result.strongest);
   const fixes = result.categories.filter((c) => c.status !== "strong").sort((a, b) => a.score - b.score);
   const fixIds = new Set(fixes.map((f) => f.id));
+  // "Where to start" only lists categories that actually need work; a strong one is not a prescription.
+  const rx = result.weakest.map(by).filter((c) => c.status !== "strong");
   const doneRaw = useSyncExternalStore(subscribe, () => readDone(result.id), () => "");
   const done = useMemo(() => new Set(parseDone(doneRaw)), [doneRaw]);
   const doneCount = fixes.filter((f) => done.has(f.id)).length;
@@ -391,10 +394,10 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
       <Toolbar result={result} />
       <Feedback id={result.id} score={result.overall} />
 
-      <Section title="Prescription · where to start">
+      {rx.length > 0 && <Section title="Prescription · where to start">
         <div className="grid gap-4 md:grid-cols-3">
-          {result.weakest.map((id, i) => {
-            const c = by(id);
+          {rx.map((c, i) => {
+            const id = c.id;
             return (
               <div key={id} className="lift rounded-xl border bg-surface p-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -407,7 +410,7 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
             );
           })}
         </div>
-      </Section>
+      </Section>}
 
       <Section title="Strongest section">
         <div className="grid gap-8 md:grid-cols-[1fr_2fr]">

@@ -247,7 +247,7 @@ export default function Home() {
                 <a href={`/result/${h.id}`} className="group flex items-center justify-between gap-4 py-3">
                   <span className="min-w-0">
                     <span className="serif block truncate text-lg group-hover:underline">{h.title}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{new Date(h.createdAt).toLocaleDateString()} · {h.words} words</span>
+                    <span className="font-mono text-xs text-muted-foreground">{shortDate(h.createdAt)} · {h.words.toLocaleString()} words</span>
                   </span>
                   <span className="rounded-full px-2.5 py-1 font-mono text-xs" style={{ background: grade(h.overall).bg, color: grade(h.overall).color }}>{h.overall}</span>
                 </a>
@@ -258,6 +258,12 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+/** "Oct 26", with the year only when it is not this year, so the order of day and month is never ambiguous. */
+function shortDate(t: number) {
+  const d = new Date(t);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }) });
 }
 
 /** Illustrative sample only: not computed from anything the visitor typed. */
