@@ -91,7 +91,7 @@ export function ResultView({ id, shared }: { id: string; shared: string | null }
       </header>
 
       <section ref={heroRef} className="rise my-8 md:my-10" style={delay(0)}>
-        <div className="panel grid items-center gap-8 p-6 md:grid-cols-[1fr_380px] md:p-10">
+        <div className="panel grid items-center gap-8 p-6 lg:grid-cols-[1fr_380px] md:p-10">
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <p className="eyebrow">{result ? "Your PRD" : "Shared result"}</p>
