@@ -10,7 +10,7 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # CI and Vercel run Node 22, so types for a newer Node major would allow APIs that do not exist there.
+      # CI runs Node 22 and Vercel runs Node 24, so types for Node 26 would allow APIs that do not exist on either.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       # typescript-eslint does not support TypeScript 7 yet (lint breaks). Revisit when it does.
