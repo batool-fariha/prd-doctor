@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "check": "node --experimental-strip-types scripts/score-check.mts",
     "fuzz": "node --experimental-strip-types scripts/fuzz.mts",
     "paste": "node --experimental-strip-types scripts/paste-check.mts",
