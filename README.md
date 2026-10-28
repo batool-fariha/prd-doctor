@@ -2,6 +2,8 @@
 
 **Paste a PRD, get a score out of 100 and the exact sentences to fix.** Free, no account, and your document never leaves your browser.
 
+[![CI](https://github.com/batool-fariha/prd-doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/batool-fariha/prd-doctor/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-6D4AFF.svg)](LICENSE)
+
 [![PRD Doctor result card](https://prd-doctor.vercel.app/opengraph-image)](https://prd-doctor.vercel.app)
 
 **Try it: https://prd-doctor.vercel.app** · Built with Next.js 16, TypeScript, Tailwind 4, shadcn/ui and PostHog.
@@ -122,7 +124,9 @@ npm run dev                  # http://localhost:3000
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run check` | Scoring regression check (see below) |
+| `npm run paste` | Checks the rich-text paste converter on Google Docs, Notion and Confluence-style HTML |
 | `npm run fuzz` | Hostile-input check |
+| `npm test` | `check`, `paste` and `fuzz` together (what CI runs) |
 
 **Environment variables** (both optional):
 
@@ -143,6 +147,8 @@ node --experimental-strip-types scripts/score-check.mts path/to/prd.md
 VERBOSE=1 node --experimental-strip-types scripts/score-check.mts path/to/prd.md
 npm run fuzz
 ```
+
+After a change to `lib/paste.ts`, run `npm run paste`. It feeds the converter HTML shaped like Google Docs, Notion and Confluence clipboards and includes regression cases for two bugs found by hand (lost soft line breaks, a list in a table cell pasted twice).
 
 - `score-check` runs the fictional examples and hand-written samples against the range a careful reviewer would accept. Pass a file path to see a per-category breakdown of any PRD, so confidential documents never need to enter the repo. `VERBOSE=1` shows which checks fired.
 - To track your own calibration set, drop files named `<name>.expect-<score>.md` into `scripts/private/` (git-ignored). `score-check` then verifies each is within ±5 of the score you gave it.
@@ -194,7 +200,11 @@ This is a finished v1, lightly maintained. Ideas, roughly in order, not promises
 
 ## Contributing
 
-Issues and pull requests are welcome, especially a PRD where the score felt wrong (remove anything confidential first). Run `npm run lint`, `npm run typecheck`, `npm run check` and `npm run fuzz` before opening a PR.
+Issues and pull requests are welcome, especially a PRD where the score felt wrong (remove anything confidential first). Run `npm run lint`, `npm run typecheck` and `npm test` before opening a PR; GitHub Actions runs the same checks plus a production build. Dependabot opens weekly pull requests for dependency updates.
+
+## License
+
+[MIT](LICENSE) © Fariha Batool.
 
 ## Author
 
