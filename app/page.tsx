@@ -228,7 +228,7 @@ export default function Home() {
         ].map(([n, t, d]) => (
           <div key={n} className="glow bg-surface/80 p-6">
             <span className="font-mono text-xs text-violet2">{n}</span>
-            <h3 className="serif mt-3 text-xl">{t}</h3>
+            <h2 className="serif mt-3 text-xl">{t}</h2>
             <p className="mt-2 text-sm text-ink2">{d}</p>
           </div>
         ))}

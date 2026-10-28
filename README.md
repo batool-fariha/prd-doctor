@@ -154,6 +154,10 @@ After a change to `lib/paste.ts`, run `npm run paste`. It feeds the converter HT
 - To track your own calibration set, drop files named `<name>.expect-<score>.md` into `scripts/private/` (git-ignored). `score-check` then verifies each is within ±5 of the score you gave it.
 - `fuzz` runs 20 hostile inputs (empty, 60,000 characters, nested markdown, RTL and emoji text, null bytes, pathological repeats): no crashes, scores stay within 0 to 100, and the slowest case takes well under 100 ms.
 
+## Accessibility
+
+Audited with [axe-core](https://github.com/dequelabs/axe-core) (a dev dependency) on the home page, a result page with every fix open, the shared-link page, How scoring works and the 404, in light and dark mode: no violations. The audit needs a real browser, so it is not part of `npm test`. To repeat it, follow the steps at the top of `scripts/axe-snippet.js`. Beyond axe: visible keyboard focus, one `h1` per page, labelled icon buttons, and reduced-motion support.
+
 ## Architecture
 
 ```
