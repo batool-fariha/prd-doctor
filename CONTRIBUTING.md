@@ -68,6 +68,18 @@ If you changed the rubric, also run `npm run docs` and commit the regenerated `d
 
 Write a short imperative summary of what changed and, when it is not obvious, why. For example: `Stop a one-line timeline counting as prioritization`.
 
+## Versioning and releases
+
+Releases follow [Semantic Versioning](https://semver.org/), applied to what a visitor can observe:
+
+| Bump | When |
+|---|---|
+| **Patch** (1.0.x) | Bug fixes, copy and layout fixes, dependency updates, and scoring fixes that do not materially change scores |
+| **Minor** (1.x.0) | New features, and rubric or scoring changes that move scores for real documents |
+| **Major** (x.0.0) | Anything that breaks existing share links or the shared payload, such as changing the number of categories |
+
+Maintainers cut a release by moving the **Unreleased** notes in `CHANGELOG.md` under a new version heading, running `npm version <x.y.z> --no-git-tag-version`, merging, and creating a GitHub Release with the same notes. Contributors only need to add a line under **Unreleased**.
+
 ## Code of conduct
 
 By taking part you agree to the [code of conduct](CODE_OF_CONDUCT.md).

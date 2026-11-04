@@ -1,8 +1,14 @@
 # Changelog
 
-All notable changes to PRD Doctor. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project has no tagged releases yet, so entries are grouped by date, newest first.
+All notable changes to PRD Doctor. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases follow [Semantic Versioning](https://semver.org/) (see [CONTRIBUTING.md](CONTRIBUTING.md#versioning-and-releases)). Work before the first tag is grouped by date, newest first.
 
 ## Unreleased
+
+Nothing yet.
+
+## [1.0.0] - 2026-11-05
+
+The first tagged release. Everything below this heading, back to 2026-10-09, was built before tagging and is kept as dated history.
 
 ### Added
 - Documentation set in `docs/`: architecture, privacy, calibration, deployment and a generated scoring reference (`docs/scoring.md`, kept in sync by `npm run docs` and checked in CI).
@@ -88,3 +94,5 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ### Added
 - First version: paste a PRD, get a 0 to 100 score across twelve categories, with fixes that quote the user's own text, a radar chart, a suggested rewrite scaffold, a shareable score card, and PostHog analytics limited to counts and scores.
+
+[1.0.0]: https://github.com/batool-fariha/prd-doctor/releases/tag/v1.0.0

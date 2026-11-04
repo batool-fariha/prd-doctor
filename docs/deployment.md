@@ -53,7 +53,7 @@ Before merging a change that affects scoring or sharing:
 2. If `lib/analyzer.ts` changed, run `npm run docs` and commit the regenerated `docs/scoring.md`.
 3. Open the preview deployment, analyse each of the three examples, and check the result page, a shared link, and the share card image.
 4. If a share link or payload format changed, confirm old links still decode or fail with the friendly "damaged link" page (see [architecture.md](architecture.md#sharing-without-a-database)).
-5. Update `CHANGELOG.md`.
+5. Update `CHANGELOG.md`. When cutting a release, move **Unreleased** under the new version, bump `package.json` with `npm version <x.y.z> --no-git-tag-version`, and create a GitHub Release (see [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-and-releases)).
 
 ## Keeping dependencies healthy
 
