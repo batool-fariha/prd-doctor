@@ -11,7 +11,9 @@
     "check": "node --experimental-strip-types scripts/score-check.mts",
     "fuzz": "node --experimental-strip-types scripts/fuzz.mts",
     "paste": "node --experimental-strip-types scripts/paste-check.mts",
-    "test": "npm run check && npm run paste && npm run fuzz"
+    "test": "npm run check && npm run paste && npm run fuzz && npm run docs:check",
+    "docs": "node --experimental-strip-types scripts/gen-docs.mts",
+    "docs:check": "node --experimental-strip-types scripts/gen-docs.mts --check"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

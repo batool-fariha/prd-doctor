@@ -12,7 +12,7 @@ export function initAnalytics() {
     person_profiles: "identified_only", // anonymous usage; no user profiles
     capture_pageview: true,
     disable_session_recording: true, // the PRD textarea must never be recorded
-    autocapture: false, // only our four explicit events
+    autocapture: false, // only our explicit events (see docs/privacy.md)
     capture_dead_clicks: false,
     disable_surveys: true,
   });
