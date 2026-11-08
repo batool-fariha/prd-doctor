@@ -4,12 +4,22 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ## Unreleased
 
+Nothing yet.
+
+## [1.1.0] - 2026-11-09
+
+Scoring is fairer to PRDs written as prose, without headings. Real calibration PRDs and the built-in examples score exactly as in 1.0.0.
+
 ### Changed
 - Scoring for PRDs written as prose without headings: role nouns (technicians, clinicians, operators, dispatchers and similar) count as a named user segment; "should be able to" counts as what the user is trying to do; "does not include", "not part of" and similar phrasings count as non-goals; "at least N matches" signals count matching sentences as well as lines; and two or more "must" or "shall" sentences count like a checklist of requirements. A 430-word prose test PRD moved from 61 to 73. The examples and all real calibration PRDs scored exactly as before.
 - The score check supports known gaps (reported without failing, and failing if fully closed). None is open now.
 
 ### Added
 - A regression case for a strong PRD written as prose without headings.
+
+### Dependencies
+- PDF reading moves to `unpdf` 2 (a major version); parsing a real PDF and a Word file was re-checked, and the type check and build pass.
+- Minor and patch updates: `posthog-js` 1.444, `lucide-react` 1.66, `cn` 0.5.1 and the dev-only `linkedom`.
 
 ## [1.0.0] - 2026-11-05
 
@@ -100,4 +110,5 @@ The first tagged release. Everything below this heading, back to 2026-10-09, was
 ### Added
 - First version: paste a PRD, get a 0 to 100 score across twelve categories, with fixes that quote the user's own text, a radar chart, a suggested rewrite scaffold, a shareable score card, and PostHog analytics limited to counts and scores.
 
+[1.1.0]: https://github.com/batool-fariha/prd-doctor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/batool-fariha/prd-doctor/releases/tag/v1.0.0
