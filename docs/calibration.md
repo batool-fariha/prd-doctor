@@ -27,7 +27,7 @@ Across these four the mean absolute difference is about 2 points and the largest
 ## What this does not show
 
 - **One author.** All four documents come from one author's well-structured template. Weak, messy and unstructured real-world PRDs are the least tested area.
-- **Prose without headings.** A specific, numbers-heavy PRD written as unstructured prose scored about 13 points below the maintainer's own estimate in testing. It is covered by a regression range but remains the weakest case.
+- **Prose without headings.** The weakest case. A made-up 430-word PRD written as plain prose (a clear problem with numbers, interviews, a named segment, explicit non-goals, a metric with baseline and target, testable behaviour, edge cases, a named risk owner and a staged rollout) scores **61**, where a careful reviewer would say roughly **70 to 85**. The misses are specific: role nouns such as "technicians" are not recognised as a user segment (Target user clarity 15), "does not include" is not read as a non-goal (Scope 30), and its must / if-then behaviour statements earn only partial Acceptance criteria credit (25). It is tracked in the regression check as a **known gap**: the misses are reported but do not fail the run, and the check fails if they are ever all fixed so the flag gets removed. The expected range is the maintainer's estimate for a document written for this test, not an independent rating.
 - **Four documents is a small sample.** It is enough to find bugs, not enough to claim a general accuracy figure.
 - **English only.** Non-English documents are detected and the report says the score is probably too low.
 - **Gaming.** A PRD written to the rubric, or stuffed with keywords, can score well.
@@ -49,6 +49,7 @@ Across these four the mean absolute difference is about 2 points and the largest
 | A flat feature list | 5 to 25, with prioritization low |
 | A buzzword pitch | 3 to 22 |
 | Specific prose with no headings | 50 to 80, with acceptance criteria, edge cases and evidence found |
+| Strong 430-word prose PRD with no headings | Expected 70 to 85; scores 61 today. A **known gap**, reported but not failing (see above) |
 | Non-English text (French, Spanish) | flagged as probably not English; English and very terse English notes are not |
 
 Ranges are deliberately wide: they exist to catch a rule change that moves a score somewhere a reviewer would not accept, not to pin an exact number.

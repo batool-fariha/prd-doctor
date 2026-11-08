@@ -4,7 +4,8 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ## Unreleased
 
-Nothing yet.
+### Added
+- A regression case for a strong PRD written as prose without headings, tracked as a known gap (scores 61 where a reviewer would say about 70 to 85). The score check reports known gaps without failing, and fails if one is ever fully closed so the flag cannot go stale. Closes #9.
 
 ## [1.0.0] - 2026-11-05
 
