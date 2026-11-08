@@ -136,7 +136,7 @@ Signals add up to 100.
 | Given / When / Then style behaviour | 20 |
 | an Acceptance Criteria section | 30 |
 | testable wording (must, only, at least, within…) | 25 |
-| a checklist or numbered requirements | 25 |
+| a checklist, numbered requirements, or several must/shall statements | 25 |
 | stated behaviour for a condition (if X, show or return Y) | 15 |
 
 Signals add up to 115; the category score is capped at 100.

@@ -113,9 +113,9 @@ const RUBRICS: Rubric[] = [
     label: "Target user clarity",
     weight: 10,
     signals: [
-      { label: "a named user segment or persona", weight: 30, test: /\b(personas?|segments?|target (users?|customers?|audience)|ICP|user types?|admins?|managers?|developers?|engineers?|designers?|marketers?|founders?|buyers?|students?|teachers?|patients?|shoppers?|merchants?|sellers?|drivers?|product managers?|customer success|sales reps?|SMBs?|enterprise)\b/i },
+      { label: "a named user segment or persona", weight: 30, test: /\b(personas?|segments?|target (users?|customers?|audience)|ICP|user types?|admins?|managers?|developers?|engineers?|designers?|marketers?|founders?|buyers?|students?|teachers?|patients?|shoppers?|merchants?|sellers?|drivers?|product managers?|customer success|sales reps?|SMBs?|enterprise|technicians?|clinicians?|nurses?|physicians?|caregivers?|pharmacists?|operators?|dispatchers?|analysts?|accountants?|recruiters?|instructors?|freelancers?|creators?|sellers?|cashiers?|warehouse (workers?|staff)|field (workers?|staff|teams?)|support agents?|case ?workers?|researchers?)\b/i },
       { label: "a Users / Persona / Audience section", weight: 20, test: /^\s*(#+\s*|\*\*)?(users?|personas?|audience|target|who)\b/im },
-      { label: "what the user is trying to get done", weight: 20, test: /\b(jobs? to be done|JTBD|workflow|trying to|wants? to|needs? to|goal is)\b/i },
+      { label: "what the user is trying to get done", weight: 20, test: /\b(jobs? to be done|JTBD|workflow|trying to|wants? to|needs? to|goal is|(should|must|can|will) be able to)\b/i },
       { label: "user stories (“As a …”)", weight: 15, test: /\bas an? [a-z][\w\s-]{2,40},? i (want|need|can)\b/i },
       { label: "how many of them there are", weight: 15, test: /\b\d[\d,.]*\s*(users|customers|teams|companies|accounts|merchants|sellers)\b|\d+\s?% of (our )?(users|customers|accounts)/i },
     ],
@@ -164,7 +164,7 @@ const RUBRICS: Rubric[] = [
     weight: 9,
     signals: [
       { label: "goals or in-scope items", weight: 30, test: /\b(in[- ]scope|scope|goals?|objectives?|will include|must have|MVP|v1|phase 1)\b/i },
-      { label: "non-goals / out-of-scope items", weight: 35, sectionTitle: /\b(non-?goals?|not (doing|building)|out of scope|won'?t)\b/i, test: /\b(out of scope|non-?goals?|not in scope|not included|won't|will not|excluded|deferred|not (doing|building))\b/i },
+      { label: "non-goals / out-of-scope items", weight: 35, sectionTitle: /\b(non-?goals?|not (doing|building)|out of scope|won'?t)\b/i, test: /\b(out of scope|non-?goals?|not in scope|not included|won't|will not|excluded|deferred|not (doing|building)|(does|do|will) not (include|cover|support|handle|address)|(doesn't|don't) (include|cover|support|handle|address)|not part of|not covered|outside (the )?scope|beyond (the )?scope)\b/i },
       { label: "phases, milestones or timeline", weight: 20, sectionTitle: /\b(phase \d|phases|milestones?|timeline|release plan)\b/i, test: /\b(phase|milestone|release|sprint|launch|timeline|deadline)\b/i },
       { label: "a structured list of requirements", weight: 15, test: /^\s*([-*•]|\d+[.)])\s+\S/m, min: 3 },
     ],
@@ -198,8 +198,8 @@ const RUBRICS: Rubric[] = [
       { label: "Given / When / Then style behaviour", weight: 20, test: /\bgiven\b[^\n]{0,200}\bwhen\b[^\n]{0,200}\bthen\b|^\s*[-*]?\s*given\b[^\n]*\n\s*[-*]?\s*when\b[^\n]*\n\s*[-*]?\s*then\b/im },
       { label: "an Acceptance Criteria section", weight: 30, test: /acceptance criteria|definition of done|\bDoD\b/i },
       { label: "testable wording (must, only, at least, within…)", weight: 25, test: /\b(must|shall|only|at least|at most|no more than|cannot|within \d|under \d|below \d|less than \d|fewer than \d|then)\b|\bp(9\d|50)\b/i, min: 2 },
-      { label: "a checklist or numbered requirements", weight: 25, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S/im, min: 2 },
-      { label: "stated behaviour for a condition (if X, show or return Y)", weight: 15, test: /\bif\b[^.\n]{3,110},\s*(then\s+)?(show|display|return|block|disable|send|retry|redirect|prompt|warn|ask|reject|allow|fall back|skip)\w*/i, min: 2 },
+      { label: "a checklist, numbered requirements, or several must/shall statements", weight: 25, test: /^\s*(([-*]\s*\[[ xX]\])|(\d+[.)])|([-*•]\s+(given|when|if|a user|users?|the user|the system|an admin|admins?|every|each|all)\b))\s*\S|^[^.!?\n]{0,70}\b(must|shall)\b/im, min: 2 },
+      { label: "stated behaviour for a condition (if X, show or return Y)", weight: 15, test: /\bif\b[^.\n]{3,110},\s*(then\s+)?(show|display|return|block|disable|send|retry|redirect|prompt|warn|ask|reject|allow|fall back|skip|keep|save|store|queue|hold|retain|preserve|notify|alert|flag|mark|hide|stop|pause|resume|let|offer|require|log|refuse)\w*/i, min: 2 },
     ],
     why: "Acceptance criteria are the contract between PM, design, engineering and QA. Without them, “done” is whatever the loudest person remembers.",
     add: "Write 5-8 pass/fail criteria in Given/When/Then form. Convert {q} into a statement a tester could verify without asking you.",
@@ -539,7 +539,13 @@ export function analyzePRD(input: string): AnalysisResult {
   const raw = RUBRICS.map((rb) =>
     rb.signals.map((sg) => {
       const r = reOf(sg.test);
-      if (sg.min) return { sg, units: [] as string[], textHit: clean.split("\n").filter((l) => r.test(l)).length >= sg.min };
+      if (sg.min) {
+        // "At least N matches": count matching lines, or matching sentences when that is more. In prose a whole paragraph is one line,
+        // so counting lines alone would treat five testable sentences as a single hit.
+        const lineHits = clean.split("\n").filter((l) => r.test(l)).length;
+        const sentenceHits = units.filter((u) => r.test(u)).length;
+        return { sg, units: [] as string[], textHit: Math.max(lineHits, sentenceHits) >= sg.min };
+      }
       if (sg.text) return { sg, units: [] as string[], textHit: r.test(clean) };
       return { sg, units: matches(units, sg.test), textHit: false };
     }),

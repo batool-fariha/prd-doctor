@@ -4,8 +4,12 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ## Unreleased
 
+### Changed
+- Scoring for PRDs written as prose without headings: role nouns (technicians, clinicians, operators, dispatchers and similar) count as a named user segment; "should be able to" counts as what the user is trying to do; "does not include", "not part of" and similar phrasings count as non-goals; "at least N matches" signals count matching sentences as well as lines; and two or more "must" or "shall" sentences count like a checklist of requirements. A 430-word prose test PRD moved from 61 to 73. The examples and all real calibration PRDs scored exactly as before.
+- The score check supports known gaps (reported without failing, and failing if fully closed). None is open now.
+
 ### Added
-- A regression case for a strong PRD written as prose without headings, tracked as a known gap (scores 61 where a reviewer would say about 70 to 85). The score check reports known gaps without failing, and fails if one is ever fully closed so the flag cannot go stale. Closes #9.
+- A regression case for a strong PRD written as prose without headings.
 
 ## [1.0.0] - 2026-11-05
 

@@ -27,7 +27,7 @@ Across these four the mean absolute difference is about 2 points and the largest
 ## What this does not show
 
 - **One author.** All four documents come from one author's well-structured template. Weak, messy and unstructured real-world PRDs are the least tested area.
-- **Prose without headings.** The weakest case. A made-up 430-word PRD written as plain prose (a clear problem with numbers, interviews, a named segment, explicit non-goals, a metric with baseline and target, testable behaviour, edge cases, a named risk owner and a staged rollout) scores **61**, where a careful reviewer would say roughly **70 to 85**. The misses are specific: role nouns such as "technicians" are not recognised as a user segment (Target user clarity 15), "does not include" is not read as a non-goal (Scope 30), and its must / if-then behaviour statements earn only partial Acceptance criteria credit (25). It is tracked in the regression check as a **known gap**: the misses are reported but do not fail the run, and the check fails if they are ever all fixed so the flag gets removed. The expected range is the maintainer's estimate for a document written for this test, not an independent rating.
+- **Prose without headings** was the weakest case and is still the least tested. A made-up 430-word PRD written as plain prose (a clear problem with numbers, interviews, a named segment, explicit non-goals, a metric with baseline and target, testable behaviour, edge cases, a named risk owner and a staged rollout) first scored **61** where a careful reviewer would say roughly **70 to 85**. Three general causes were fixed: role nouns such as "technicians" are now recognised as a user segment (with "should be able to" read as what the user wants to do), phrasings such as "does not include" now count as non-goals, and "at least N matches" signals now count matching sentences as well as lines, so a paragraph of testable statements is no longer a single hit. Prose requirement sentences ("must" or "shall") now count like a checklist. The document now scores **73**, and no other score in the regression set, including the real PRDs, moved. The expected range is the maintainer's estimate for a document written for this test, not an independent rating, and one made-up document is a thin basis: prose PRDs in other domains may still be under-scored.
 - **Four documents is a small sample.** It is enough to find bugs, not enough to claim a general accuracy figure.
 - **English only.** Non-English documents are detected and the report says the score is probably too low.
 - **Gaming.** A PRD written to the rubric, or stuffed with keywords, can score well.
@@ -49,7 +49,7 @@ Across these four the mean absolute difference is about 2 points and the largest
 | A flat feature list | 5 to 25, with prioritization low |
 | A buzzword pitch | 3 to 22 |
 | Specific prose with no headings | 50 to 80, with acceptance criteria, edge cases and evidence found |
-| Strong 430-word prose PRD with no headings | Expected 70 to 85; scores 61 today. A **known gap**, reported but not failing (see above) |
+| Strong 430-word prose PRD with no headings | 70 to 85, with Target user, Scope and Acceptance criteria at 55 or more |
 | Non-English text (French, Spanish) | flagged as probably not English; English and very terse English notes are not |
 
 Ranges are deliberately wide: they exist to catch a rule change that moves a score somewhere a reviewer would not accept, not to pin an exact number.
