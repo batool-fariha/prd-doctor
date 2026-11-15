@@ -116,7 +116,7 @@ The exact data, the properties of every event, and how to verify all of this you
 
 ## Run it locally
 
-Requires Node 20 or newer for the app, and Node 22.6 or newer for the `check` and `fuzz` scripts (they use `--experimental-strip-types`).
+Requires Node 20.9 or newer for the app, and Node 22.6 or newer for the `check` and `fuzz` scripts (they use `--experimental-strip-types`).
 
 ```bash
 npm install

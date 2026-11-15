@@ -19,7 +19,7 @@ cp .env.example .env.local   # optional; analytics stay off without a key
 npm run dev                  # http://localhost:3000
 ```
 
-Node 20 or newer runs the app. The `check`, `paste`, `fuzz` and `docs` scripts need Node 22.6 or newer. See [docs/deployment.md](docs/deployment.md).
+Node 20.9 or newer runs the app. The `check`, `paste`, `fuzz` and `docs` scripts need Node 22.6 or newer. See [docs/deployment.md](docs/deployment.md).
 
 ## Scripts
 
