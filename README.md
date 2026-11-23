@@ -8,6 +8,8 @@
 
 **Try it: https://prd-doctor.vercel.app** · Built with Next.js 16, TypeScript, Tailwind 4, shadcn/ui and PostHog.
 
+![A short demo: load the Decent draft example, press Analyze PRD, see a score of 53 out of 100 with a radar chart, then open the top fix, which says what is missing, why it matters and what to add](docs/img/demo.gif)
+
 PRD Doctor scores a product requirements document across 12 categories (problem, users, evidence, pain, scope, metrics, acceptance criteria, risks, edge cases, dependencies, prioritization, experiment design). For every weak category it says what is missing, why it matters, what to add, and one question to answer. Each fix quotes a sentence **from your own PRD**, or says "No mention found". It never writes your PRD and never makes anything up.
 
 ## Contents
