@@ -182,7 +182,7 @@ export default function Home() {
                     ))}
                   </div>
                   <p className="mt-5 hidden flex-wrap items-center justify-center gap-1.5 font-mono text-[11px] text-muted-foreground sm:flex">
-                    {[".pdf", ".docx", ".md", ".txt"].map((x) => <span key={x} className="rounded border bg-surface/70 px-1.5 py-0.5">{x}</span>)}
+                    {[".pdf", ".docx", ".md", ".txt", ".zip"].map((x) => <span key={x} className="rounded border bg-surface/70 px-1.5 py-0.5">{x}</span>)}
                   </p>
                 </div>
               </div>

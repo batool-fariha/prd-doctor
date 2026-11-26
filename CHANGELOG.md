@@ -4,7 +4,14 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- Notion's export `.zip` can be dropped in directly. The top-level page is read in the browser with the built-in `DecompressionStream`, including large exports split into `Part-1.zip`. Nothing is uploaded and no dependency was added.
+- [docs/importing.md](docs/importing.md) covers every route from Notion and Google Docs (paste, `.md`, `.zip`, `.docx`) and what happens with each.
+
+### Fixed
+
+- Notion Markdown exports no longer leave `<aside>`, `<details>` and `<summary>` tags from callouts and toggles in the analysed text. Their text is kept.
 
 ## [1.1.0] - 2026-11-09
 
