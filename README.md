@@ -40,7 +40,7 @@ PRDs are the most reviewed and least measured document in product work. Feedback
 ## What it does
 
 **Input**
-- Paste text (Google Docs and Notion formatting is converted to headings and lists), or drop in a **PDF, Word (.docx), `.md` or `.txt`** file. Files are read in your browser and never uploaded.
+- Paste text (Google Docs and Notion formatting is converted to headings and lists), or drop in a **PDF, Word (.docx), `.md` or `.txt`** file, or a **Notion export `.zip`**. Files are read in your browser and never uploaded. See [Importing from Notion and Google Docs](docs/importing.md).
 - Not supported, with a clear message: scanned PDFs with no selectable text, legacy `.doc`, input under 40 words or over 60,000 characters, and code-like or repeated text.
 - Three fictional examples (rough, decent, strong) so you can see the range before using your own.
 
@@ -188,7 +188,7 @@ lib/site.ts                  site name, URL, author links
 components/result-view.tsx   hero, radar, bars, fixes, rewrite, share controls
 components/                  diagnosis overlay, example picker, feedback, footer, theme toggle, charts
 scripts/                     score-check, paste-check, fuzz, gen-docs, axe-snippet
-docs/                        architecture, privacy, calibration, deployment, scoring (generated)
+docs/                        architecture, privacy, calibration, deployment, importing, scoring (generated)
 ```
 
 The data flow, the share-link format, browser storage keys and how to extend the rubric are in [docs/architecture.md](docs/architecture.md).
