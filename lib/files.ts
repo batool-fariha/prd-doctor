@@ -1,11 +1,12 @@
 import { normalizeText } from "./analyzer";
 import { htmlToText } from "./paste";
+import { cleanNotionMarkdown, pickNotionPage } from "./notion";
 
-export type FileKind = "md" | "txt" | "docx" | "pdf";
+export type FileKind = "md" | "txt" | "docx" | "pdf" | "zip";
 export interface LoadedFile { text: string; name: string; kind: FileKind; pages?: number }
 
 export const ACCEPT =
-  ".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
+  ".pdf,.docx,.md,.markdown,.txt,.zip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,application/zip";
 
 const MB = 1024 * 1024;
 
@@ -18,6 +19,7 @@ function kindOf(f: File): FileKind | null {
   const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf" || f.type === "application/pdf") return "pdf";
   if (ext === "docx") return "docx";
+  if (ext === "zip" || f.type === "application/zip" || f.type === "application/x-zip-compressed") return "zip";
   if (ext === "md" || ext === "markdown") return "md";
   if (ext === "txt" || f.type.startsWith("text/")) return "txt";
   return null;
@@ -44,13 +46,28 @@ export async function readFile(f: File): Promise<LoadedFile> {
   const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "doc") throw new Error("Old .doc files can't be read here. In Word choose File, Save As, .docx, or copy and paste the text.");
   const kind = kindOf(f);
-  if (!kind) throw new Error(`“${f.name}” can't be read here. Use a PDF, Word (.docx), Markdown or text file, or paste the text.`);
-  const limit = kind === "pdf" || kind === "docx" ? 15 * MB : MB;
+  if (!kind) throw new Error(`“${f.name}” can't be read here. Use a PDF, Word (.docx), Markdown or text file, a Notion export (.zip), or paste the text.`);
+  const limit = kind === "pdf" || kind === "docx" || kind === "zip" ? 15 * MB : MB;
   if (f.size > limit) throw new Error(`That file is over ${limit / MB} MB. Paste the relevant sections instead.`);
 
-  if (kind === "md" || kind === "txt") return { text: normalizeText(await f.text()), name: f.name, kind };
+  if (kind === "md") return { text: normalizeText(cleanNotionMarkdown(await f.text())), name: f.name, kind };
+  if (kind === "txt") return { text: normalizeText(await f.text()), name: f.name, kind };
 
   const buf = await f.arrayBuffer();
+
+  if (kind === "zip") {
+    // Notion's "Markdown & CSV" export. Read in the browser with DecompressionStream; nothing is uploaded.
+    let page: Awaited<ReturnType<typeof pickNotionPage>> = null;
+    try {
+      page = await pickNotionPage(new Uint8Array(buf));
+    } catch {
+      throw new Error("That zip couldn't be read. It may be damaged. Export it again, or open the page's .md file instead.");
+    }
+    if (!page) throw new Error("That zip has no Markdown page in it. In Notion, export as “Markdown & CSV”, or paste the text.");
+    const text = normalizeText(cleanNotionMarkdown(page.text));
+    if (text.length < 20) throw new Error("The Notion page in that zip is empty. Paste the text instead.");
+    return { text, name: page.name, kind };
+  }
 
   if (kind === "docx") {
     try {
