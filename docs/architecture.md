@@ -84,6 +84,7 @@ The share card is fully determined by its URL, so `/api/og` sends `Cache-Control
 | `prd-doctor:done:<id>` | Fixes marked as addressed |
 | `prd-doctor:feedback:<id>` | Whether the "does this score feel right?" prompt was answered |
 | `prd-doctor:theme` | Light or dark preference |
+| `prd-doctor:compliance` | Whether the optional compliance check is turned on |
 
 If `localStorage` is blocked or full, results are kept in memory for the session and the app keeps working.
 

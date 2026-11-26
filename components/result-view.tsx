@@ -9,6 +9,7 @@ import { copyText } from "@/lib/clipboard";
 import { downloadText, fixMarkdown, reportMarkdown } from "@/lib/report";
 import { track } from "@/lib/analytics";
 import { Burst } from "./burst";
+import { Compliance } from "./compliance";
 import { Feedback } from "./feedback";
 import { CountUp } from "./count-up";
 import { LogoMark } from "./logo";
@@ -436,6 +437,8 @@ function FullReport({ result, active, setActive, select }: LinkProps & { result:
         )}
         {fixes.length > 0 && <p className="no-print mt-5 text-xs text-muted-foreground">Mark a fix as addressed once you have updated your PRD, then use “Edit and re-score” to see the real change.</p>}
       </Section>
+
+      {result.text && <Compliance text={result.text} />}
 
       <Rewrite text={result.rewrite} />
     </>

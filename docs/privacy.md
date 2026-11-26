@@ -18,7 +18,7 @@ There is no account, no database and no server-side analysis. The analysis runs 
 Everything below is in `localStorage` on your device and can be removed with **Clear history** or by clearing site data.
 
 - The full result of each analysis, **including the PRD text**, so that you can edit it and score it again.
-- A history index (title, date, word count, scores), the text currently in the editor, which fixes you marked as addressed, whether you answered the feedback prompt, and your light or dark preference.
+- A history index (title, date, word count, scores), the text currently in the editor, which fixes you marked as addressed, whether you answered the feedback prompt, your light or dark preference, and whether the optional compliance check is turned on.
 
 If `localStorage` is blocked or full, results are kept in memory for the session instead.
 

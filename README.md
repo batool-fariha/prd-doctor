@@ -211,7 +211,7 @@ This is a finished v1, lightly maintained. Ideas, roughly in order, not promises
 
 1. **A bigger calibration set.** More PRDs from other authors, especially weak and messy ones, to widen the range the scoring has been checked on.
 2. **An optional LLM second pass.** Keep the rubric and quoting contract; have a model grade *quality*, and require its evidence to be a verbatim substring of your PRD (reject otherwise).
-3. **Customisable rubrics** per team (for example a compliance category for regulated products).
+3. **Customisable rubrics** per team. A fixed, optional compliance check for regulated products is in place ([docs/compliance.md](docs/compliance.md)); a format teams can edit would build on it.
 4. **Import** from Notion, Google Docs or Confluence.
 5. **Localisation** beyond English.
 
@@ -222,6 +222,7 @@ This is a finished v1, lightly maintained. Ideas, roughly in order, not promises
 | [docs/scoring.md](docs/scoring.md) | Every category, signal and weight, generated from the code |
 | [docs/architecture.md](docs/architecture.md) | Data flow, modules, share-link format, storage, testing, extending |
 | [docs/privacy.md](docs/privacy.md) | Exactly what is stored and sent, and how to verify it |
+| [docs/compliance.md](docs/compliance.md) | The optional compliance check for regulated products: what it checks and why it is a separate score |
 | [docs/calibration.md](docs/calibration.md) | How the scoring was checked against real PRDs, and its limits |
 | [docs/deployment.md](docs/deployment.md) | Requirements, environment variables, Vercel, self-hosting, release checklist |
 | [CHANGELOG.md](CHANGELOG.md) | What changed and when |

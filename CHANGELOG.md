@@ -4,7 +4,9 @@ All notable changes to PRD Doctor. The format follows [Keep a Changelog](https:/
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- An optional compliance check for regulated products, off by default, turned on from the result page. It looks for five topics: sensitive data handling, an audit trail, the regulations that apply, regulatory or legal sign-off, and breach or incident handling. It quotes the matching sentence and says what to add for each missing topic. It is a separate score out of 100, so the 0–100 total, the 12 categories and share links are unchanged. See [docs/compliance.md](docs/compliance.md).
 
 ## [1.1.0] - 2026-11-09
 
